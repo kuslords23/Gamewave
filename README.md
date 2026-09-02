@@ -1,2 +1,0 @@
-# Gamewave
-Kus game engine
