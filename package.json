@@ -1,0 +1,14 @@
+{
+  "name": "gamewave",
+  "version": "1.0.0",
+  "description": "FindMyMom TypeScript starter - Open world game generation platform",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "jest"
+  },
+  "keywords": ["game", "typescript", "open-world", "geolocation"],
+  "author": "",
+  "license": "MIT"
+}
