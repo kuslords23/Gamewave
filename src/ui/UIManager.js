@@ -1,22 +1,23 @@
 /**
  * KUS WORLD ENGINE — UI Manager
  *
- * Manages all UI interactions:
+ * Manages landing page UI interactions:
  * - Drag-and-drop video upload
  * - Pipeline progress overlay
- * - HUD display during gameplay
- * - Screen transitions
+ * - Screen transitions between landing → progress → game
  */
 
 import { PipelineManager } from '../pipeline/PipelineManager.js';
 
 class UIManager {
-  constructor() {
+  constructor(landingId = 'landing', handlers = {}) {
     this.pipeline = PipelineManager.getInstance();
     this.selectedFile = null;
+    this.handlers = handlers;
+    this._onPipelineComplete = null;
 
     // DOM refs
-    this.landing = document.getElementById('landing');
+    this.landing = document.getElementById(landingId);
     this.dropZone = document.getElementById('dropZone');
     this.fileInput = document.getElementById('fileInput');
     this.fileName = document.getElementById('fileName');
@@ -30,20 +31,20 @@ class UIManager {
     this.hud = document.getElementById('hud');
     this.gameCanvas = document.getElementById('gameCanvas');
 
-    this._setupEventListeners();
-    this._watchPipeline();
+    if (this.landing && this.dropZone) {
+      this._setupEventListeners();
+      this._watchPipeline();
+    }
   }
 
   /* ── Event Listeners ── */
 
   _setupEventListeners() {
-    // File input
     this.fileInput.addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (file) this._handleFileSelected(file);
     });
 
-    // Drag & drop
     this.dropZone.addEventListener('click', () => this.fileInput.click());
 
     this.dropZone.addEventListener('dragover', (e) => {
@@ -64,7 +65,6 @@ class UIManager {
       }
     });
 
-    // Generate button
     this.generateBtn.addEventListener('click', () => this._startGeneration());
   }
 
@@ -105,7 +105,7 @@ class UIManager {
     };
 
     try {
-      // Try to get video metadata
+      // Get video metadata
       try {
         const metadata = await this._getVideoMetadata(this.selectedFile);
         videoSource.duration = metadata.duration;
@@ -117,12 +117,15 @@ class UIManager {
       }
 
       // Start the pipeline
-      await this.pipeline.start(videoSource);
+      const world = await this.pipeline.start(videoSource);
 
-      // Transition to game
+      // Hide progress
       this.progressOverlay.classList.remove('active');
-      this.gameContainer.classList.add('active');
-      this.hud.classList.add('active');
+
+      // Call completion handler
+      if (this._onPipelineComplete) {
+        await this._onPipelineComplete(world);
+      }
 
     } catch (err) {
       console.error('Pipeline failed:', err);

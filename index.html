@@ -6,7 +6,7 @@
   <title>KUS WORLD ENGINE — Turn Film Into Playable Worlds</title>
   <meta name="description" content="Browser-based AI game engine that reconstructs film into playable, persistent 3D worlds." />
   <meta property="og:title" content="KUS WORLD ENGINE" />
-  <meta property="og:description" content="Turn anyfilm into an explorable, interactive 3D world." />
+  <meta property="og:description" content="Turn any film into an explorable, interactive 3D world." />
 
   <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#0a0a0f" />
@@ -32,11 +32,83 @@
   </script>
 
   <style>
-    /* ── Reset & Base ── */
+    /* ════════════════════════════════════════
+       RESET & BASE
+       ════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; color: #e0e0e0; font-family: 'Inter', 'SF Pro', system-ui, -apple-system, sans-serif; }
 
-    /* ── Landing Screen ── */
+    /* ════════════════════════════════════════
+       APP LAYOUT (sidebar + content)
+       ════════════════════════════════════════ */
+    #app { display: flex; width: 100%; height: 100%; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 220px; min-width: 220px; height: 100%;
+      background: rgba(15,15,25,0.95);
+      border-right: 1px solid rgba(255,255,255,0.06);
+      display: flex; flex-direction: column;
+      z-index: 60; transition: transform 0.3s ease;
+    }
+    #sidebar.hidden { display: none; }
+
+    .sidebar-header {
+      padding: 1.2rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .sidebar-logo {
+      font-size: 1.2rem; font-weight: 700;
+      background: linear-gradient(135deg, #a080ff, #ff80cc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .sidebar-logo-icon { font-size: 1.1rem; }
+
+    .sidebar-nav { flex: 1; padding: 0.5rem 0; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 1rem; color: rgba(255,255,255,0.5);
+      text-decoration: none; font-size: 0.9rem;
+      transition: all 0.2s ease; border-left: 2px solid transparent;
+    }
+    .nav-item:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.03); }
+    .nav-item.active { color: #a080ff; border-left-color: #a080ff; background: rgba(160,128,255,0.06); }
+    .nav-icon { font-size: 1.1rem; width: 24px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 1rem; border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.7rem; color: rgba(255,255,255,0.2);
+    }
+
+    /* ── Content Area ── */
+    #contentArea {
+      flex: 1; height: 100%; overflow-y: auto;
+      position: relative;
+    }
+
+    #contentArea::-webkit-scrollbar { width: 6px; }
+    #contentArea::-webkit-scrollbar-track { background: transparent; }
+    #contentArea::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    .page-content { display: none; padding: 2rem; max-width: 960px; margin: 0 auto; }
+
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .page-subtitle { color: rgba(255,255,255,0.4); font-size: 0.9rem; }
+
+    /* ── Sidebar Toggle (mobile) ── */
+    #sidebarToggle {
+      display: none; position: fixed; top: 0.75rem; left: 0.75rem; z-index: 70;
+      background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+      color: #fff; font-size: 1.3rem; padding: 0.4rem 0.6rem;
+      border-radius: 8px; cursor: pointer; backdrop-filter: blur(8px);
+    }
+
+    /* ════════════════════════════════════════
+       LANDING SCREEN
+       ════════════════════════════════════════ */
     #landing {
       position: fixed; inset: 0; z-index: 100;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -45,7 +117,6 @@
     }
     #landing.hidden { opacity: 0; transform: scale(1.05); pointer-events: none; }
 
-    /* Animated grid background */
     #landing::before {
       content: ''; position: absolute; inset: 0;
       background-image:
@@ -59,7 +130,6 @@
       100% { transform: translateY(60px); }
     }
 
-    /* Glow orbs */
     #landing::after {
       content: ''; position: absolute; inset: 0;
       background: radial-gradient(circle at 30% 40%, rgba(100,120,255,0.08) 0%, transparent 50%),
@@ -75,7 +145,7 @@
     }
     .logo span { color: rgba(180,140,255,0.7); }
 
-    h1 {
+    #landing h1 {
       font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; line-height: 1.1;
       background: linear-gradient(135deg, #fff 30%, #a080ff 70%, #ff80cc);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
@@ -86,7 +156,6 @@
       max-width: 540px; margin: 0 auto 2.5rem; line-height: 1.6;
     }
 
-    /* ── Drop Zone ── */
     #dropZone {
       position: relative; width: 100%; max-width: 560px; margin: 0 auto 2rem;
       padding: 3rem 2rem; border: 2px dashed rgba(255,255,255,0.15);
@@ -106,19 +175,16 @@
     .drop-formats { margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
     .format-badge {
       padding: 0.2rem 0.7rem; border-radius: 6px; font-size: 0.7rem;
-      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.35);
-      font-family: monospace;
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.35); font-family: monospace;
     }
 
     .file-info { display: none; align-items: center; gap: 1rem; margin-top: 1rem; }
     #dropZone.has-file .file-info { display: flex; justify-content: center; }
-    #dropZone.has-file .drop-icon, #dropZone.has-file .drop-text, #dropZone.has-file .drop-hint,
-    #dropZone.has-file .drop-formats { display: none; }
-
+    #dropZone.has-file .drop-icon, #dropZone.has-file .drop-text,
+    #dropZone.has-file .drop-hint, #dropZone.has-file .drop-formats { display: none; }
     .file-name { color: rgba(255,255,255,0.8); font-weight: 500; }
     .file-size { color: rgba(255,255,255,0.4); font-size: 0.85rem; }
 
-    /* ── Generate Button ── */
     #generateBtn {
       position: relative; display: inline-flex; align-items: center; gap: 0.75rem;
       padding: 1rem 2.5rem; border: none; border-radius: 14px;
@@ -128,9 +194,8 @@
     }
     #generateBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,92,252,0.35); }
     #generateBtn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-    #generateBtn .btn-icon { font-size: 1.3rem; }
 
-    /* ── Progress Overlay ── */
+    /* ── Progress ── */
     #progressOverlay {
       position: fixed; inset: 0; z-index: 200;
       display: none; flex-direction: column; align-items: center; justify-content: center;
@@ -162,20 +227,18 @@
     .progress-steps li.active { color: rgba(255,255,255,0.8); }
     .step-icon { width: 20px; text-align: center; }
 
-    /* ── Game Canvas ── */
+    /* ── Game ── */
     #gameContainer {
       position: fixed; inset: 0; z-index: 1; display: none;
     }
     #gameContainer.active { display: block; }
     #gameCanvas { width: 100%; height: 100%; display: block; outline: none; }
 
-    /* ── HUD ── */
     #hud {
       position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 10;
       display: none; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px);
       padding: 0.75rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);
-      font-size: 0.8rem; color: rgba(255,255,255,0.4);
-      gap: 1.5rem; align-items: center;
+      font-size: 0.8rem; color: rgba(255,255,255,0.4); gap: 1.5rem; align-items: center;
     }
     #hud.active { display: flex; }
     .hud-key { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.08); font-family: monospace; font-size: 0.75rem; }
@@ -193,7 +256,199 @@
     .vibed-badge:hover { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.12); }
     .vibed-badge img { width: 18px; height: 18px; border-radius: 4px; }
 
-    /* ── Animations ── */
+    /* ════════════════════════════════════════
+       WORLDS PAGE
+       ════════════════════════════════════════ */
+    .world-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .world-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px; overflow: hidden; cursor: pointer;
+      transition: all 0.2s ease; display: flex; flex-direction: column;
+    }
+    .world-card:hover { border-color: rgba(160,128,255,0.3); background: rgba(160,128,255,0.05); transform: translateY(-2px); }
+    .world-card-thumb {
+      height: 100px; background: linear-gradient(135deg, #1a1a2e, #16213e);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .world-card-icon { font-size: 2.5rem; opacity: 0.5; }
+    .world-card-body { padding: 0.75rem 1rem; flex: 1; }
+    .world-card-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .world-card-meta { display: flex; gap: 0.75rem; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; }
+    .world-card-date { font-size: 0.7rem; color: rgba(255,255,255,0.25); margin-top: 0.4rem; }
+    .world-card-actions {
+      display: flex; gap: 0.25rem; padding: 0.5rem 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .action-btn {
+      padding: 0.3rem 0.6rem; border: none; border-radius: 6px;
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6);
+      font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;
+    }
+    .action-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .action-btn.danger:hover { background: rgba(255,80,80,0.2); color: #ff6b6b; }
+
+    .empty-state {
+      grid-column: 1 / -1; text-align: center; padding: 3rem;
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+    .empty-state h2 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+    .empty-state p { color: rgba(255,255,255,0.4); margin-bottom: 1.5rem; }
+
+    /* ════════════════════════════════════════
+       VIDEOS PAGE
+       ════════════════════════════════════════ */
+    .video-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .video-card {
+      display: flex; align-items: center; gap: 1rem;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; padding: 1rem;
+      transition: all 0.2s ease;
+    }
+    .video-card:hover { border-color: rgba(255,255,255,0.12); }
+    .video-card-icon { font-size: 2rem; opacity: 0.5; }
+    .video-card-body { flex: 1; }
+    .video-card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .video-card-meta { display: flex; gap: 0.75rem; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; }
+    .video-card-date { font-size: 0.7rem; color: rgba(255,255,255,0.25); margin-top: 0.25rem; }
+    .video-card-actions { display: flex; gap: 0.25rem; }
+
+    /* ════════════════════════════════════════
+       SETTINGS PAGE
+       ════════════════════════════════════════ */
+    .settings-section {
+      margin-bottom: 2rem; padding: 1.5rem;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+    }
+    .settings-section h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .setting-row:last-child { border-bottom: none; }
+
+    .setting-label { flex: 1; }
+    .setting-label span { font-size: 0.9rem; font-weight: 500; display: block; }
+    .setting-label small { font-size: 0.75rem; color: rgba(255,255,255,0.35); display: block; margin-top: 0.15rem; }
+
+    .setting-select {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      color: #e0e0e0; padding: 0.4rem 0.8rem; border-radius: 8px;
+      font-size: 0.85rem; cursor: pointer; outline: none; min-width: 120px;
+    }
+    .setting-select:focus { border-color: #a080ff; }
+
+    .toggle { position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: rgba(255,255,255,0.15);
+      border-radius: 12px; transition: all 0.3s ease;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute; left: 3px; bottom: 3px;
+      width: 18px; height: 18px; background: #fff; border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+    .toggle input:checked + .toggle-slider { background: #7c5cfc; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    .settings-actions {
+      display: flex; gap: 0.75rem; margin-top: 1.5rem;
+    }
+    .settings-status {
+      margin-top: 1rem; padding: 0.75rem; border-radius: 8px;
+      background: rgba(100,200,150,0.1); color: rgba(100,200,150,0.8);
+      font-size: 0.9rem; opacity: 0; transition: opacity 0.3s ease;
+    }
+
+    .btn-primary, .btn-secondary, .btn-danger {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 1.2rem; border: none; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c5cfc, #a855f7); color: #fff;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(124,92,252,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+    .btn-danger {
+      background: rgba(255,80,80,0.15); color: #ff6b6b;
+    }
+    .btn-danger:hover { background: rgba(255,80,80,0.25); }
+
+    /* ════════════════════════════════════════
+       ABOUT PAGE
+       ════════════════════════════════════════ */
+    .about-hero { text-align: center; padding: 2rem 0 2.5rem; }
+    .about-logo {
+      font-size: 3rem; opacity: 0.6; margin-bottom: 0.5rem;
+    }
+    .about-hero h1 {
+      font-size: 2.5rem; font-weight: 700;
+      background: linear-gradient(135deg, #fff 30%, #a080ff 70%, #ff80cc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .about-tagline { font-size: 1.1rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem; }
+
+    .about-section {
+      margin-bottom: 2rem;
+    }
+    .about-section h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.75rem; }
+    .about-section p { font-size: 0.9rem; color: rgba(255,255,255,0.6); line-height: 1.7; }
+
+    .arch-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+    .arch-item {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 1rem; text-align: center;
+    }
+    .arch-icon { font-size: 1.8rem; display: block; margin-bottom: 0.3rem; }
+    .arch-label { font-size: 0.85rem; font-weight: 600; display: block; }
+    .arch-desc { font-size: 0.7rem; color: rgba(255,255,255,0.35); display: block; margin-top: 0.2rem; }
+
+    .tech-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.5rem;
+    }
+    .tech-item {
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px; padding: 0.6rem 0.8rem;
+    }
+    .tech-name { font-size: 0.85rem; font-weight: 600; display: block; }
+    .tech-desc { font-size: 0.7rem; color: rgba(255,255,255,0.35); }
+
+    .roadmap-list { list-style: none; }
+    .roadmap-list li {
+      padding: 0.4rem 0; font-size: 0.85rem; color: rgba(255,255,255,0.5);
+    }
+    .roadmap-list li.done { color: rgba(100,200,150,0.8); }
+
+    .credits { text-align: center; padding: 1.5rem; background: rgba(255,255,255,0.02); border-radius: 12px; }
+    .credits p { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+
+    .about-footer {
+      text-align: center; padding: 2rem 0 1rem;
+      font-size: 0.75rem; color: rgba(255,255,255,0.2); border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .about-footer a { color: rgba(160,128,255,0.6); text-decoration: none; }
+
+    /* ════════════════════════════════════════
+       ANIMATIONS
+       ════════════════════════════════════════ */
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .landing-content > * { animation: fadeInUp 0.6s ease forwards; opacity: 0; }
     .landing-content > *:nth-child(1) { animation-delay: 0.1s; }
@@ -202,22 +457,90 @@
     .landing-content > *:nth-child(4) { animation-delay: 0.4s; }
     .landing-content > *:nth-child(5) { animation-delay: 0.5s; }
 
-    /* ── Responsive ── */
+    /* ════════════════════════════════════════
+       RESPONSIVE
+       ════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed; left: 0; top: 0; transform: translateX(-100%);
+      }
+      #sidebar.open { transform: translateX(0); }
+      #sidebar.hidden { display: flex; }
+
+      #sidebarToggle { display: block; }
+
+      .page-content { padding: 1rem; }
+
+      .world-grid { grid-template-columns: 1fr; }
+
+      .setting-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+
+      .video-card { flex-direction: column; text-align: center; }
+
+      #landing.hidden + #sidebarToggle { display: block; }
+    }
+
     @media (max-width: 640px) {
       #dropZone { padding: 2rem 1rem; }
       #generateBtn { width: 100%; justify-content: center; }
       .mobile-only { display: flex !important; }
     }
-
     @media (min-width: 641px) {
       .mobile-only { display: none !important; }
     }
+
+    /* Game-playing state: hide sidebar + content area */
+    .game-active #sidebar { display: none !important; }
+    .game-active #contentArea { display: none !important; }
+    .game-active #sidebarToggle { display: none !important; }
   </style>
 </head>
 <body>
-  <!-- ═══════════════════════════════════════─
-         LANDING SCREEN
+  <!-- Sidebar Toggle (mobile) -->
+  <button id="sidebarToggle">☰</button>
+
+  <div id="app">
+    <!-- ════════════════════════════════════════
+       SIDEBAR NAVIGATION
        ════════════════════════════════════════ -->
+    <nav id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-logo-icon">◆</span>
+        <span class="sidebar-logo">KUS World</span>
+      </div>
+      <div class="sidebar-nav">
+        <a class="nav-item active" href="#home">
+          <span class="nav-icon">🏠</span> Home
+        </a>
+        <a class="nav-item" href="#worlds">
+          <span class="nav-icon">🌍</span> My Worlds
+        </a>
+        <a class="nav-item" href="#library">
+          <span class="nav-icon">🎬</span> Video Library
+        </a>
+        <a class="nav-item" href="#settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </a>
+        <a class="nav-item" href="#about">
+          <span class="nav-icon">ℹ️</span> About
+        </a>
+      </div>
+      <div class="sidebar-footer">
+        KUS WORLD ENGINE v0.1
+      </div>
+    </nav>
+
+    <!-- ════════════════════════════════════════
+       CONTENT AREA (pages render here)
+       ════════════════════════════════════════ -->
+    <main id="contentArea">
+      <!-- Pages are rendered here by the router -->
+    </main>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     LANDING SCREEN (full-screen overlay)
+     ════════════════════════════════════════ -->
   <div id="landing">
     <div class="landing-content">
       <div class="logo"><span>◆</span> KUS WORLD ENGINE</div>
@@ -250,16 +573,15 @@
       </button>
     </div>
 
-    <!-- Vibed with Shakespeare badge -->
     <a class="vibed-badge" href="https://shakespeare.diy" target="_blank">
       <img src="https://shakespeare.diy/badge.svg" alt="Shakespeare" />
       Vibed with Shakespeare
     </a>
   </div>
 
-  <!-- ═══════════════════════════════════════─
-         PROGRESS OVERLAY
-       ════════════════════════════════════════ -->
+  <!-- ════════════════════════════════════════
+     PROGRESS OVERLAY
+     ════════════════════════════════════════ -->
   <div id="progressOverlay">
     <div class="progress-card">
       <div class="progress-title">⚡ Reconstructing World</div>
@@ -279,16 +601,16 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════─
-         GAME CANVAS
-       ════════════════════════════════════════ -->
+  <!-- ════════════════════════════════════════
+     GAME CANVAS
+     ════════════════════════════════════════ -->
   <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
   </div>
 
-  <!-- ═══════════════════════════════════════─
-         HUD
-       ════════════════════════════════════════ -->
+  <!-- ════════════════════════════════════════
+     HUD
+     ════════════════════════════════════════ -->
   <div id="hud">
     <span><span class="hud-key">W A S D</span> Move</span>
     <div class="hud-separator"></div>
@@ -299,11 +621,13 @@
     <span id="fpsCounter">0 FPS</span>
     <div class="hud-separator mobile-only"></div>
     <span class="mobile-only"><span class="hud-key">👆 Drag</span> Look</span>
+    <div class="hud-separator"></div>
+    <a href="#home" id="exitGameBtn" style="color:rgba(255,255,255,0.4);text-decoration:none;font-size:0.8rem">✕ Exit</a>
   </div>
 
-  <!-- ═══════════════════════════════════════─
-         APP ENTRY
-       ════════════════════════════════════════ -->
+  <!-- ════════════════════════════════════════
+     APP ENTRY
+     ════════════════════════════════════════ -->
   <script type="module">
     import { main } from './src/main.js';
     main();
@@ -315,7 +639,6 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').then((reg) => {
           console.log('📱 PWA ready — SW registered:', reg.scope);
-          // Check for updates
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             newWorker.addEventListener('statechange', () => {
