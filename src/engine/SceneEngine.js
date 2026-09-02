@@ -3,21 +3,19 @@
  *
  * Manages the 3D scene lifecycle:
  * - Creates Babylon.js engine with WebGPU/WebGL
- * - Builds procedural demo worlds
+ * - Builds worlds from scene graphs via WorldBuilder
  * - Handles camera, lighting, and rendering loop
+ * - Fallback to procedural demo world when no scene graph provided
  */
 
-/* ── Engine Configuration ── */
+import { WorldBuilder } from './WorldBuilder.js';
 
 const DEFAULT_CONFIG = {
   canvasId: 'gameCanvas',
   enableWebGPU: true,
   antialias: true,
   adaptive: true,
-  showDebug: false,
 };
-
-/* ── Scene Engine ── */
 
 class SceneEngine {
   constructor(config = {}) {
@@ -31,6 +29,8 @@ class SceneEngine {
     this.fpsCounter = 0;
     this.lastFpsUpdate = 0;
     this.frameCount = 0;
+    this.worldBuilder = new WorldBuilder();
+    this.shadowCasterMeshes = [];
   }
 
   /* ── Initialization ── */
@@ -63,7 +63,8 @@ class SceneEngine {
     }
 
     this.engine = engine;
-    this.scene = new (await import('@babylonjs/core/scene')).Scene(engine);
+    const { Scene } = await import('@babylonjs/core/scene');
+    this.scene = new Scene(engine);
     const { Color4, Color3 } = await import('@babylonjs/core/Maths/math.color');
     this.scene.clearColor = new Color4(0.05, 0.05, 0.08, 1.0);
     this.scene.ambientColor = new Color3(0.3, 0.3, 0.35);
@@ -144,8 +145,44 @@ class SceneEngine {
     this.shadowGenerator.blurKernel = 32;
   }
 
-  /* ── World Building ── */
+  /* ════════════════════════════════════════
+     WORLD BUILDING
+     ════════════════════════════════════════ */
 
+  /**
+   * Build a world from a scene graph (reconstructed from video)
+   */
+  async buildFromSceneGraph(sceneGraph) {
+    console.log(`🏗️ Building world from scene graph: "${sceneGraph.name}"`);
+    const meshes = await this.worldBuilder.build(sceneGraph, this.scene);
+
+    // Store references
+    meshes.forEach((mesh, id) => {
+      this.meshes.set(id, mesh);
+      if (id !== 'ground') {
+        this.shadowCasterMeshes.push(mesh);
+      }
+    });
+
+    // Enable shadows
+    this.shadowCasterMeshes.forEach(mesh => {
+      this.shadowGenerator?.addShadowCaster(mesh);
+    });
+
+    // Center camera on the world
+    if (this.camera) {
+      const { Vector3 } = await import('@babylonjs/core/Maths/math.vector');
+      this.camera.position = new Vector3(0, 5, -12);
+      this.camera.setTarget(Vector3.Zero());
+    }
+
+    console.log(`✅ World built: ${this.meshes.size} meshes total`);
+  }
+
+  /**
+   * Build a demo world (fallback when no scene graph available)
+   * Used for testing/development
+   */
   async buildDemoWorld() {
     const { Vector3 } = await import('@babylonjs/core/Maths/math.vector');
     const { Color3 } = await import('@babylonjs/core/Maths/math.color');
@@ -165,7 +202,7 @@ class SceneEngine {
     ground.checkCollisions = true;
     this.meshes.set('ground', ground);
 
-    // Grid lines
+    // Grid
     for (let i = -15; i <= 15; i++) {
       const line = MeshBuilder.CreateLines(`grid_h_${i}`, {
         points: [new Vector3(-15, 0.01, i), new Vector3(15, 0.01, i)],
@@ -179,54 +216,26 @@ class SceneEngine {
     }
 
     // Buildings
-    this.createBuilding('building_main', new Vector3(-3, 0, -2), 2, 4, 2, 0x445566);
-    this.createBuilding('building_left', new Vector3(-6, 0, 2), 1.5, 3, 1.5, 0x556677);
-    this.createBuilding('building_right', new Vector3(3, 0, -1), 2.5, 3.5, 1.8, 0x334455);
-    this.createBuilding('building_corner', new Vector3(5, 0, 3), 1.8, 2.5, 1.8, 0x667788);
+    await this.createBuilding('building_main', new Vector3(-3, 0, -2), 2, 4, 2, 0x445566);
+    await this.createBuilding('building_left', new Vector3(-6, 0, 2), 1.5, 3, 1.5, 0x556677);
+    await this.createBuilding('building_right', new Vector3(3, 0, -1), 2.5, 3.5, 1.8, 0x334455);
+    await this.createBuilding('building_corner', new Vector3(5, 0, 3), 1.8, 2.5, 1.8, 0x667788);
 
-    // Street lamps
-    this.createLamp('lamp_1', new Vector3(-1, 0, 4));
-    this.createLamp('lamp_2', new Vector3(2, 0, -4));
-    this.createLamp('lamp_3', new Vector3(-4, 0, -3));
+    // Lamps, trees, props
+    await Promise.all([
+      this.createLamp('lamp_1', new Vector3(-1, 0, 4)),
+      this.createLamp('lamp_2', new Vector3(2, 0, -4)),
+      this.createLamp('lamp_3', new Vector3(-4, 0, -3)),
+      this.createTree('tree_1', new Vector3(-7, 0, -2)),
+      this.createTree('tree_2', new Vector3(6, 0, -1.5)),
+      this.createTree('tree_3', new Vector3(-5, 0, 4)),
+      this.createTree('tree_4', new Vector3(4, 0, 4.5)),
+      this.createCharacter('npc_1', new Vector3(-2, 0, 1), 0xCC8899),
+      this.createCharacter('npc_2', new Vector3(4, 0, -2), 0x99CC88),
+      this.createCharacter('npc_3', new Vector3(-1, 0, -4), 0x8899CC),
+    ]);
 
-    // Trees
-    this.createTree('tree_1', new Vector3(-7, 0, -2));
-    this.createTree('tree_2', new Vector3(6, 0, -1.5));
-    this.createTree('tree_3', new Vector3(-5, 0, 4));
-    this.createTree('tree_4', new Vector3(4, 0, 4.5));
-
-    // Props
-    this.createProp('bench_1', new Vector3(-1, 0, -3), 1, 0.4, 0.5, 0x8B6914);
-    this.createProp('bench_2', new Vector3(2.5, 0, 2), 1, 0.4, 0.5, 0x8B6914);
-
-    // Characters (placeholder NPCs)
-    this.createCharacter('npc_1', new Vector3(-2, 0, 1), 0xCC8899);
-    this.createCharacter('npc_2', new Vector3(4, 0, -2), 0x99CC88);
-    this.createCharacter('npc_3', new Vector3(-1, 0, -4), 0x8899CC);
-
-    // Billboard
-    const billboard = MeshBuilder.CreateBox('billboard', { width: 2, height: 1.2, depth: 0.1 }, this.scene);
-    billboard.position = new Vector3(0, 1.5, -6);
-    const billMat = new StandardMaterial('billMat', this.scene);
-    billMat.diffuseColor = new Color3(0.15, 0.15, 0.25);
-    billMat.emissiveColor = new Color3(0.05, 0.05, 0.1);
-    billboard.material = billMat;
-
-    // Floating particles
-    for (let i = 0; i < 50; i++) {
-      const dot = MeshBuilder.CreateSphere(`particle_${i}`, { diameter: 0.04 }, this.scene);
-      dot.position = new Vector3(
-        (Math.random() - 0.5) * 20,
-        0.5 + Math.random() * 4,
-        (Math.random() - 0.5) * 20
-      );
-      const dotMat = new StandardMaterial(`particleMat_${i}`, this.scene);
-      dotMat.emissiveColor = new Color3(0.3, 0.2, 0.5);
-      dotMat.alpha = 0.3 + Math.random() * 0.3;
-      dot.material = dotMat;
-    }
-
-    // Enable shadows for all meshes except ground
+    // Enable shadows
     this.meshes.forEach((mesh, key) => {
       if (key !== 'ground') {
         this.shadowGenerator?.addShadowCaster(mesh);
@@ -236,13 +245,12 @@ class SceneEngine {
     console.log('🌍 Demo world built successfully');
   }
 
-  /* ── Mesh Factory ── */
+  /* ── Mesh Factories ── */
 
   async createBuilding(id, pos, w, h, d, color) {
     const { MeshBuilder } = await import('@babylonjs/core/Meshes/meshBuilder');
     const { StandardMaterial } = await import('@babylonjs/core/Materials/standardMaterial');
-    const { Color3 } = await import('@babylonjs/core/Maths/math.color');
-    const { Vector3 } = await import('@babylonjs/core/Maths/math.vector');
+    const { Color3, Vector3 } = await import('@babylonjs/core/Maths/math');
 
     const box = MeshBuilder.CreateBox(id, { width: w, height: h, depth: d }, this.scene);
     box.position = pos.clone();
@@ -317,28 +325,6 @@ class SceneEngine {
     bulb.material = bulbMat;
 
     this.meshes.set(id, pole);
-  }
-
-  async createProp(id, pos, w, h, d, color) {
-    const { MeshBuilder } = await import('@babylonjs/core/Meshes/meshBuilder');
-    const { StandardMaterial } = await import('@babylonjs/core/Materials/standardMaterial');
-    const { Color3 } = await import('@babylonjs/core/Maths/math.color');
-
-    const box = MeshBuilder.CreateBox(id, { width: w, height: h, depth: d }, this.scene);
-    box.position = pos.clone();
-    box.position.y += h / 2;
-    box.checkCollisions = true;
-
-    const r = ((color >> 16) & 0xFF) / 255;
-    const g = ((color >> 8) & 0xFF) / 255;
-    const b = (color & 0xFF) / 255;
-
-    const mat = new StandardMaterial(`mat_${id}`, this.scene);
-    mat.diffuseColor = new Color3(r, g, b);
-    mat.roughness = 0.8;
-    box.material = mat;
-
-    this.meshes.set(id, box);
   }
 
   async createCharacter(id, pos, color) {
