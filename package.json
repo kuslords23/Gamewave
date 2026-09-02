@@ -1,23 +1,23 @@
 {
   "name": "gamewave",
   "version": "1.0.0",
-  "description": "FindMyMom TypeScript starter - Open world game generation platform",
-  "main": "dist/index.js",
+  "description": "KUS WORLD ENGINE - Browser-based AI game engine that reconstructs film into playable 3D worlds",
+  "type": "module",
   "scripts": {
-    "build": "tsc",
-    "dev": "ts-node src/index.ts",
-    "test": "echo \"No tests\"",
-    "vercel-build": "tsc"
+    "build": "tsc && cp -r src/*.d.ts dist/ 2>/dev/null; echo 'Build complete'"
   },
-  "keywords": ["game", "typescript", "open-world", "geolocation"],
+  "keywords": [
+    "game",
+    "typescript",
+    "3d",
+    "babylonjs",
+    "webgpu",
+    "ai",
+    "film-to-world"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@vercel/node": "^3.0.0",
     "typescript": "^5.4.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.12.0",
-    "ts-node": "^10.9.0"
   }
 }

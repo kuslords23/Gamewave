@@ -1,2 +1,0 @@
-// Workflow: parse → resolve geo → generate assets → compose world
-// Each step has retries, timeouts, and caching
