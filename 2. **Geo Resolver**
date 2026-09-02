@@ -1,0 +1,3 @@
+// Match script descriptions to real coordinates
+// "Coffee shop on the corner, downtown LA"
+// → { lat: 34.0479, lng: -118.2503, type: "cafe" }
