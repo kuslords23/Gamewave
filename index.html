@@ -2,11 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>KUS WORLD ENGINE — Turn Film Into Playable Worlds</title>
   <meta name="description" content="Browser-based AI game engine that reconstructs film into playable, persistent 3D worlds." />
   <meta property="og:title" content="KUS WORLD ENGINE" />
   <meta property="og:description" content="Turn any film into an explorable, interactive 3D world." />
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="KUS World" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="KUS WORLD ENGINE" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="256x256" href="/public/icon-256.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/public/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="256x256" href="/public/icon-256.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="/public/icon-512.png" />
 
   <!-- Import Map: Resolves bare npm imports to esm.sh CDN -->
   <script type="importmap">
@@ -193,6 +206,11 @@
     @media (max-width: 640px) {
       #dropZone { padding: 2rem 1rem; }
       #generateBtn { width: 100%; justify-content: center; }
+      .mobile-only { display: flex !important; }
+    }
+
+    @media (min-width: 641px) {
+      .mobile-only { display: none !important; }
     }
   </style>
 </head>
@@ -279,6 +297,8 @@
     <span><span class="hud-key">Shift</span> Sprint</span>
     <div class="hud-separator"></div>
     <span id="fpsCounter">0 FPS</span>
+    <div class="hud-separator mobile-only"></div>
+    <span class="mobile-only"><span class="hud-key">👆 Drag</span> Look</span>
   </div>
 
   <!-- ═══════════════════════════════════════─
@@ -287,6 +307,28 @@
   <script type="module">
     import { main } from './src/main.js';
     main();
+  </script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          console.log('📱 PWA ready — SW registered:', reg.scope);
+          // Check for updates
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('🔄 New version available — refresh to update');
+              }
+            });
+          });
+        }).catch((err) => {
+          console.warn('📱 SW registration failed:', err.message);
+        });
+      });
+    }
   </script>
 </body>
 </html>

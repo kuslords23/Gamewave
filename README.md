@@ -50,7 +50,21 @@ Simply open `index.html` in a browser that supports **WebGPU** (Chrome 113+, Edg
 
 1. Drop a video file onto the landing page
 2. Watch the AI pipeline reconstruct it
-3. Explore the resulting 3D world with WASD + mouse
+3. Explore the resulting 3D world with WASD + mouse (or touch on mobile)
+
+## 📱 PWA — Install on Your Phone
+
+This is a fully offline-capable Progressive Web App.
+
+### To install on Android:
+1. Open the site in Chrome
+2. Tap the "Install" banner or menu → "Add to Home Screen"
+3. Launch from your home screen — it opens fullscreen, no browser chrome
+
+### To install on iOS (Safari):
+1. Tap the **Share** button (square with arrow)
+2. Scroll down and tap **"Add to Home Screen"**
+3. Name it "KUS World" and tap **Add**
 
 ## Development
 
