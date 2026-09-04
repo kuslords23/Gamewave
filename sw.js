@@ -11,12 +11,11 @@ const RUNTIME_CACHE = 'kus-world-runtime-v1';
 
 // App shell — these are cached on install
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/public/icon-192.png',
-  '/public/icon-256.png',
-  '/public/icon-512.png',
+  'index.html',
+  'manifest.json',
+  'public/icon-192.png',
+  'public/icon-256.png',
+  'public/icon-512.png',
 ];
 
 // Babylon.js CDN prefix — all Babylon imports will be cached
@@ -77,7 +76,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Local assets (JS modules, etc.) — cache first
-  if (url.origin === self.location.origin && !url.pathname.startsWith('/public/')) {
+  if (url.origin === self.location.origin) {
     event.respondWith(cacheFirst(event.request));
     return;
   }

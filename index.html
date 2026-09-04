@@ -15,11 +15,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="application-name" content="KUS WORLD ENGINE" />
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" type="image/png" sizes="256x256" href="/public/icon-256.png" />
-  <link rel="apple-touch-icon" sizes="192x192" href="/public/icon-192.png" />
-  <link rel="apple-touch-icon" sizes="256x256" href="/public/icon-256.png" />
-  <link rel="apple-touch-icon" sizes="512x512" href="/public/icon-512.png" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="256x256" href="public/icon-256.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="public/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="256x256" href="public/icon-256.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="public/icon-512.png" />
 
   <!-- Import Map: Resolves bare npm imports to esm.sh CDN -->
   <script type="importmap">
@@ -637,7 +637,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then((reg) => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
           console.log('📱 PWA ready — SW registered:', reg.scope);
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
