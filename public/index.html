@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KUS WORLD ENGINE</title>
+  <meta name="description" content="Turn Film Into Playable Worlds — Browser-based AI game engine" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◆</text></svg>" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0a0a0f; color: #e0e0e0; overflow: hidden; }
+    #app { width: 100vw; height: 100vh; position: relative; }
+    #landing { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; flex-direction: column; }
+    .hidden { display: none !important; }
+    #dropZone { width: 320px; height: 200px; border: 2px dashed #666; border-radius: 12px; cursor: pointer; transition: all 0.2s; margin: 20px; }
+    #dropZone.drag-over { border-color: #4da6ff; background: #1a1a2e; }
+    #dropZone.has-file { background: #1a1a2e; }
+    #fileName { margin-top: 10px; font-size: 14px; color: #888; }
+    #fileSize { font-size: 12px; color: #666; margin-bottom: 15px; }
+    #generateBtn { padding: 12px 32px; background: #4da6ff; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+    #generateBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #gameContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #gameCanvas { width: 100%; height: 100%; display: block; }
+    #progressOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.95); display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 1000; }
+    #currentStage { font-size: 18px; margin-top: 15px; }
+    #progressSteps { list-style: none; padding: 20px; margin-top: 20px; text-align: left; max-width: 500px; }
+    #progressSteps li { padding: 8px 0; }
+    .step-icon { margin-right: 10px; }
+    #fpsCounter { position: absolute; top: 10px; right: 10px; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="gameContainer">
+      <div id="landing">
+        <h1 style="font-size: 2.5em; margin-bottom: 20px;">KUS WORLD ENGINE</h1>
+        <p style="font-size: 1.2em; color: #888; margin-bottom: 30px;">Turn Film Into Playable Worlds</p>
+        <div id="dropZone">
+          <div style="font-size: 24px; margin-bottom: 10px;">📂 Drag & Drop Video Here</div>
+          <div style="font-size: 14px; color: #666;">or click to browse</div>
+        </div>
+        <div id="fileName"></div>
+        <div id="fileSize"></div>
+        <button id="generateBtn" disabled>Generate World</button>
+        <div id="currentStage"></div>
+      </div>
+      <canvas id="gameCanvas"></canvas>
+      <div id="fpsCounter" class="hidden">FPS: --</div>
+    </div>
+    <div id="progressOverlay">
+      <div style="font-size: 1.5em; margin-bottom: 20px;">Building World...</div>
+      <ul id="progressSteps"></ul>
+      <div style="margin-top: 20px; font-size: 14px; color: #888;">Progress: <span id="progressFill">0%</span></div>
+    </div>
+    <div id="hud" class="hidden"></div>
+    <input type="file" id="fileInput" accept="video/*" multiple style="display: none;" />
+  </div>
+
+  <!-- Babylon.js import map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@babylonjs/core": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.2.0/dist/babylon.js",
+      "@babylonjs/core/": "https://cdn.jsdelivr.net/npm/@babylonjs/core@7.2.0/dist/",
+      "@babylonjs/loaders": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.2.0/dist/loaders.js",
+      "@babylonjs/loaders/": "https://cdn.jsdelivr.net/npm/@babylonjs/loaders@7.2.0/dist/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import { main } from './src/main.js';
+    main().catch(err => {
+      console.error('Initialization error:', err);
+      document.getElementById('currentStage').innerHTML = '<span style="color:#ff6666">❌ ' + err.message + '</span>';
+    });
+  </script>
+
+  <!-- PWA service worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

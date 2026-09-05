@@ -335,7 +335,6 @@ class SceneAnalyzer {
   _buildScenes(shots, frames, moods, colors, motion) {
     const scenes = [];
     let currentSceneShots = [shots[0]];
-    let currentMood = moods[0];
 
     for (let i = 1; i < shots.length; i++) {
       const prevMood = moods[i - 1];
@@ -375,8 +374,7 @@ class SceneAnalyzer {
 
     // Compute motion intensity for the scene
     const sceneMotion = motion.filter(m =>
-      m.timestamp >= frames[startFrame]?.timestamp &&
-      m.timestamp <= frames[endFrame]?.timestamp
+      m.timestamp >= frames[startFrame]?.timestamp && m.timestamp <= frames[endFrame]?.timestamp
     );
     const avgMotion = sceneMotion.reduce((a, m) => a + m.intensity, 0) / Math.max(1, sceneMotion.length);
 

@@ -1,23 +1,16 @@
 {
-  "name": "gamewave",
+  "name": "kus-world-engine",
   "version": "1.0.0",
-  "description": "KUS WORLD ENGINE - Browser-based AI game engine that reconstructs film into playable 3D worlds",
+  "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc && cp -r src/*.d.ts dist/ 2>/dev/null; echo 'Build complete'"
+    "build": "tsc",
+    "dev": "tsc && echo 'Ready'",
+    "start": "npx serve . -p 3000",
+    "preview": "npm run dev"
   },
-  "keywords": [
-    "game",
-    "typescript",
-    "3d",
-    "babylonjs",
-    "webgpu",
-    "ai",
-    "film-to-world"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "typescript": "^5.4.0"
   }
 }
