@@ -9,7 +9,9 @@
     "start": "npx serve . -p 3000",
     "preview": "npm run dev"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@babylonjs/core": "^8.0.0"
+  },
   "devDependencies": {
     "typescript": "^5.4.0"
   }

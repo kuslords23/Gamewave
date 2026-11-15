@@ -16,9 +16,11 @@ class SceneEngine {
     this.light = null;
     this.meshes = new Map();
     this.worldBuilder = new WorldBuilder();
+    /** @type {any} */
     this.BJS = null;
   }
 
+  /** @param {HTMLCanvasElement} canvas */
   async init(canvas) {
     try {
       // Dynamically import Babylon.js modules
