@@ -25,17 +25,25 @@ create index if not exists scn_post_group_members_user_idx on public.scn_post_gr
 alter table public.scn_post_groups enable row level security;
 alter table public.scn_post_group_members enable row level security;
 
+create or replace function public.is_scn_post_group_member(p_group_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $
+  select exists (
+    select 1 from public.scn_post_group_members
+    where group_id = p_group_id and user_id = auth.uid()
+  );
+$;
+
+revoke all on function public.is_scn_post_group_member(uuid) from public;
+grant execute on function public.is_scn_post_group_member(uuid) to authenticated;
+
 drop policy if exists "SCN Post public groups and memberships are visible" on public.scn_post_groups;
 create policy "SCN Post public groups and memberships are visible"
   on public.scn_post_groups for select
-  using (
-    privacy = 'public'
-    or owner_id = auth.uid()
-    or exists (
-      select 1 from public.scn_post_group_members m
-      where m.group_id = scn_post_groups.id and m.user_id = auth.uid()
-    )
-  );
+  using (privacy = 'public' or owner_id = auth.uid() or public.is_scn_post_group_member(id));
 
 drop policy if exists "SCN Post owners update groups" on public.scn_post_groups;
 create policy "SCN Post owners update groups"
@@ -51,13 +59,7 @@ create policy "SCN Post owners delete groups"
 drop policy if exists "SCN Post members see their group roster" on public.scn_post_group_members;
 create policy "SCN Post members see their group roster"
   on public.scn_post_group_members for select
-  using (
-    user_id = auth.uid()
-    or exists (
-      select 1 from public.scn_post_group_members mine
-      where mine.group_id = scn_post_group_members.group_id and mine.user_id = auth.uid()
-    )
-  );
+  using (user_id = auth.uid() or public.is_scn_post_group_member(group_id));
 
 create or replace function public.create_scn_post_group(
   p_name text,
