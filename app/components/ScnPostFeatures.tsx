@@ -124,7 +124,8 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
 
   useEffect(() => { void loadFollowing(); }, [loadFollowing]);
   useEffect(() => { if (!supabase) return; void supabase.from('feed_post_likes').select('post_id').eq('user_id', user.id).then(({ data }) => setLiked(new Set((data || []).map(row => String(row.post_id))))); void supabase.from('feed_post_reposts').select('post_id').eq('user_id', user.id).then(({ data }) => setReposted(new Set((data || []).map(row => String(row.post_id))))); }, [user.id]);
-  useEffect(() => { if (activeTab === 'friends') void searchPeople(); }, [activeTab, searchPeople]);
+  useEffect(() => { if (activeTab === 'friends' || activeTab === 'messages') void searchPeople(); }, [activeTab, searchPeople]);
+  useEffect(() => { if (profile) { setProfileName(profile.name || ''); setProfileUsername(profile.username || ''); setProfileAvatar(profile.avatar || ''); } }, [profile]);
   useEffect(() => { if (activeTab === 'notifications') void loadNotices(); }, [activeTab, loadNotices]);
   useEffect(() => { if (activeTab === 'messages' && selectedPerson) void loadMessages(selectedPerson); }, [activeTab, selectedPerson, loadMessages]);
   useEffect(() => {
