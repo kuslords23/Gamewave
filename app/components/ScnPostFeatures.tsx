@@ -8,17 +8,19 @@ import { supabase } from '../lib/supabase';
 import type { ScnPost } from '../lib/feedTypes';
 import './ScnPostFeatures.css';
 
-type FeatureTab = 'friends' | 'reels' | 'messages' | 'notifications' | 'profile' | 'creator' | 'royal';
+type FeatureTab = 'friends' | 'reels' | 'messages' | 'communities' | 'notifications' | 'profile' | 'creator' | 'royal';
 type Profile = { id: string; name: string; username?: string; avatar?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
 type Notice = { id: string; title: string; body: string | null; category: string | null; read: boolean; created_at: string; metadata?: Record<string, unknown> };
 type RoyalTurn = { role: 'user' | 'assistant'; content: string };
+type Community = { id: string; name: string; description: string; privacy: 'public' | 'private'; invite_code: string; conversation_id: string; created_at: string };
 
 const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
   { id: 'friends', label: 'Friends', icon: Users },
   { id: 'reels', label: 'Reels', icon: Film },
   { id: 'messages', label: 'Messages', icon: MessageCircle },
+  { id: 'communities', label: 'Communities', icon: Users },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'profile', label: 'My profile', icon: Compass },
   { id: 'creator', label: 'Creator studio', icon: BarChart3 },
@@ -62,6 +64,18 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [royalBusy, setRoyalBusy] = useState(false);
   const [royalError, setRoyalError] = useState('');
   const royalAbort = useRef<AbortController | null>(null);
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [communityMembers, setCommunityMembers] = useState<Set<string>>(new Set());
+  const [communitySearch, setCommunitySearch] = useState('');
+  const [communityName, setCommunityName] = useState('');
+  const [communityDescription, setCommunityDescription] = useState('');
+  const [communityPrivacy, setCommunityPrivacy] = useState<'public' | 'private'>('public');
+  const [communityGroupId, setCommunityGroupId] = useState('');
+  const [communityInviteCode, setCommunityInviteCode] = useState('');
+  const [communityBusy, setCommunityBusy] = useState(false);
+  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
+  const [communityMessages, setCommunityMessages] = useState<ChatMessage[]>([]);
+  const [communityMessageDraft, setCommunityMessageDraft] = useState('');
 
   const currentName = profile?.name || String(user.user_metadata?.name || user.email?.split('@')[0] || 'SCN member');
   const currentAvatar = profile?.avatar || String(user.user_metadata?.avatar || '👑');
@@ -97,6 +111,73 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
       : await supabase.from('follows').insert({ follower_id: user.id, target_type: 'user', target_id: person.id, target_name: person.name, target_avatar: person.avatar });
     if (result.error) { setFollowing(old => { const next = new Set(old); isFollowing ? next.add(person.id) : next.delete(person.id); return next; }); toast.error(result.error.message); }
     else toast.success(isFollowing ? 'Unfollowed ' + person.name : 'Following ' + person.name);
+  };
+
+  const loadCommunities = useCallback(async () => {
+    if (!supabase) return;
+    const [g, m] = await Promise.all([
+      supabase.from('scn_post_groups').select('id,name,description,privacy,invite_code,conversation_id,created_at').order('created_at', { ascending: false }).limit(80),
+      supabase.from('scn_post_group_members').select('group_id').eq('user_id', user.id),
+    ]);
+    if (g.error) { toast.error('Communities are unavailable. Apply migration 054 first.'); return; }
+    setCommunities((g.data || []) as Community[]);
+    setCommunityMembers(new Set((m.data || []).map(row => String(row.group_id))));
+  }, [user.id]);
+
+  const loadCommunityMessages = useCallback(async (group: Community) => {
+    if (!supabase) return;
+    const { data, error } = await supabase.from('chat_messages').select('id,conversation_id,sender_id,content,message,created_at').eq('conversation_id', group.conversation_id).order('created_at', { ascending: true }).limit(300);
+    if (error) { toast.error(error.message); return; }
+    setCommunityMessages((data || []) as ChatMessage[]);
+  }, []);
+
+  const createCommunity = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!supabase || !communityName.trim()) return;
+    setCommunityBusy(true);
+    const name = communityName.trim();
+    const description = communityDescription.trim();
+    const { data, error } = await supabase.rpc('create_scn_post_group', { p_name: name, p_description: description, p_privacy: communityPrivacy });
+    if (error) toast.error(error.message);
+    else {
+      const row = Array.isArray(data) ? data[0] : data;
+      await loadCommunities();
+      setCommunityName(''); setCommunityDescription('');
+      if (row?.id) {
+        const group = { id: String(row.id), name, description, privacy: communityPrivacy, invite_code: String(row.invite_code || ''), conversation_id: String(row.conversation_id || ''), created_at: new Date().toISOString() } as Community;
+        setSelectedCommunity(group); setCommunityMembers(old => new Set(old).add(group.id));
+        toast.success('Community created');
+      }
+    }
+    setCommunityBusy(false);
+  };
+
+  const joinCommunity = async (group: Community, inviteCode?: string) => {
+    if (!supabase) return;
+    setCommunityBusy(true);
+    const { error } = await supabase.rpc('join_scn_post_group', { p_group_id: group.id, p_invite_code: inviteCode || null });
+    if (error) toast.error(error.message);
+    else {
+      setCommunityMembers(old => new Set(old).add(group.id)); setSelectedCommunity(group);
+      setCommunityGroupId(''); setCommunityInviteCode('');
+      await loadCommunityMessages(group); toast.success('Joined ' + group.name);
+    }
+    setCommunityBusy(false);
+  };
+
+  const sendCommunityMessage = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!supabase || !selectedCommunity || !communityMessageDraft.trim()) return;
+    const content = communityMessageDraft.trim();
+    const { error } = await supabase.from('chat_messages').insert({ conversation_id: selectedCommunity.conversation_id, sender_id: user.id, content, message: content, read: false });
+    if (error) toast.error(error.message);
+    else { setCommunityMessageDraft(''); await loadCommunityMessages(selectedCommunity); }
+  };
+
+  const shareCommunityInvite = async (group: Community) => {
+    const url = window.location.origin + '/?community=' + group.id + '&invite=' + encodeURIComponent(group.invite_code);
+    try { if (navigator.share) await navigator.share({ title: group.name + ' on SCN Post', text: 'Join my SCN community', url }); else { await navigator.clipboard.writeText(url); toast.success('Invite link copied'); } }
+    catch (error) { if (!(error instanceof Error && error.name === 'AbortError')) toast.error('Could not share invite'); }
   };
 
   const loadNotices = useCallback(async () => {
@@ -135,6 +216,8 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   useEffect(() => { if (activeTab === 'friends' || activeTab === 'messages') void searchPeople(); }, [activeTab, searchPeople]);
   useEffect(() => { if (profile) { setProfileName(profile.name || ''); setProfileUsername(profile.username || ''); setProfileAvatar(profile.avatar || ''); } }, [profile]);
   useEffect(() => { if (activeTab === 'notifications') void loadNotices(); }, [activeTab, loadNotices]);
+  useEffect(() => { if (activeTab === 'communities') { void loadCommunities(); const params = new URLSearchParams(window.location.search); const groupId = params.get('community'); const invite = params.get('invite'); if (groupId) { setCommunityGroupId(groupId); setCommunityInviteCode(invite || ''); } } }, [activeTab, loadCommunities]);
+  useEffect(() => { if (!supabase || activeTab !== 'communities' || !selectedCommunity || !communityMembers.has(selectedCommunity.id)) return; void loadCommunityMessages(selectedCommunity); const channel = supabase.channel('scn-post-community-' + selectedCommunity.id).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'conversation_id=eq.' + selectedCommunity.conversation_id }, payload => { const row = payload.new as ChatMessage; setCommunityMessages(old => old.some(item => item.id === row.id) ? old : [...old, row]); }).subscribe(); return () => { if (supabase) void supabase.removeChannel(channel); }; }, [activeTab, selectedCommunity, communityMembers, loadCommunityMessages]);
   useEffect(() => { if (activeTab === 'messages' && selectedPerson) void loadMessages(selectedPerson); }, [activeTab, selectedPerson, loadMessages]);
   useEffect(() => {
     if (!supabase || activeTab !== 'messages' || !selectedPerson) return;
@@ -313,6 +396,19 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     if (activeTab === 'reels') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">SHORT-FORM VIDEO</span><h2>Reels</h2><p>Discover video posts from across the SCN community.</p></div><button className="scnf-gold-button" onClick={onCreatePost}><Plus size={16}/> Create video</button></div>
       {reels.length === 0 ? <div className="scnf-empty"><Film size={30}/><b>No reels yet</b><p>Video posts published to the shared SCN feed will appear here.</p><button className="scnf-gold-button" onClick={onCreatePost}>Upload a video</button></div> : <div className="scnf-reels-layout"><div className="scnf-reel-stage"><div className="scnf-reel-video-wrap"><video key={reels[reelIndex]?.id} src={reels[reelIndex]?.media_url || ''} controls playsInline autoPlay muted loop className="scnf-reel-video" onPlay={() => void recordReelView(reels[reelIndex])}/><div className="scnf-reel-overlay"><span>{reels[reelIndex]?.user_name}</span><p>{reels[reelIndex]?.content}</p></div></div><div className="scnf-reel-actions"><button onClick={() => void toggleLike(reels[reelIndex])} className={liked.has(reels[reelIndex]?.id) ? 'active' : ''}><Heart size={19}/>Like</button><button onClick={() => void toggleRepost(reels[reelIndex])} className={reposted.has(reels[reelIndex]?.id) ? 'active' : ''}><Share2 size={19}/>Repost</button><button onClick={() => void sharePost(reels[reelIndex])}><Send size={19}/>Share</button></div></div><div className="scnf-reel-rail">{reels.map((reel, index) => <button key={reel.id} className={index === reelIndex ? 'selected' : ''} onClick={() => setReelIndex(index)}><span>{index + 1}</span><div><b>{reel.user_name}</b><small>{reel.content || 'Video post'}</small></div></button>)}</div></div>}
+    </section>;
+
+    if (activeTab === 'communities') return <section className="scnf-panel">
+      <div className="scnf-panel-head"><div><span className="scnf-kicker">COMMUNITY SPACES</span><h2>Communities</h2><p>Build or join shared spaces using SCN group membership and conversations.</p></div></div>
+      <div className="scnf-community-layout">
+        <div className="scnf-community-discovery">
+          <form className="scnf-community-create" onSubmit={createCommunity}><b>Create a community</b><input value={communityName} onChange={e => setCommunityName(e.target.value)} placeholder="Community name" maxLength={64} required/><textarea value={communityDescription} onChange={e => setCommunityDescription(e.target.value)} placeholder="What is this community about?" rows={2}/><div><select value={communityPrivacy} onChange={e => setCommunityPrivacy(e.target.value as 'public'|'private')}><option value="public">Public</option><option value="private">Private · invite code</option></select><button className="scnf-gold-button" disabled={communityBusy || !communityName.trim()}><Plus size={15}/> Create</button></div></form>
+          <div className="scnf-community-title"><b>Discover spaces</b><span>{communities.length} found</span></div><div className="scnf-search"><Search size={16}/><input value={communitySearch} onChange={e => setCommunitySearch(e.target.value)} placeholder="Search communities"/></div>
+          <div className="scnf-community-list">{communities.filter(group => (group.name + ' ' + group.description).toLowerCase().includes(communitySearch.toLowerCase())).map(group => <article key={group.id} className={selectedCommunity?.id === group.id ? 'selected' : ''}><div><b>{group.name}</b><small>{group.description || 'A community in SCN Post'} · {group.privacy}</small></div>{communityMembers.has(group.id) ? <button onClick={() => { setSelectedCommunity(group); void loadCommunityMessages(group); }}>Open</button> : <button onClick={() => void joinCommunity(group)} disabled={communityBusy}>Join</button>}</article>)}</div>
+          <div className="scnf-community-invite"><b>Join with an invite</b><input value={communityGroupId} onChange={e => setCommunityGroupId(e.target.value)} placeholder="Community ID"/><input value={communityInviteCode} onChange={e => setCommunityInviteCode(e.target.value)} placeholder="Invite code"/><button onClick={() => { const group = communities.find(item => item.id === communityGroupId.trim()); if (group) void joinCommunity(group, communityInviteCode); else toast.error('The community is not visible yet. Check the invite details.'); }} disabled={communityBusy || !communityGroupId.trim()}>Join private community</button></div>
+        </div>
+        <div className="scnf-community-chat">{selectedCommunity ? <><header><div><b>{selectedCommunity.name}</b><small>{selectedCommunity.privacy} community</small></div>{communityMembers.has(selectedCommunity.id) && <button onClick={() => void shareCommunityInvite(selectedCommunity)}>Invite</button>}</header>{communityMembers.has(selectedCommunity.id) ? <><div className="scnf-community-messages">{communityMessages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'mine' : ''}><p>{message.content || message.message}</p><small>{message.sender_id === user.id ? 'You' : 'Member'} · {ago(message.created_at)}</small></div>)}{communityMessages.length === 0 && <div className="scnf-empty">Start the community conversation.</div>}</div><form className="scnf-chat-compose" onSubmit={sendCommunityMessage}><input value={communityMessageDraft} onChange={e => setCommunityMessageDraft(e.target.value)} placeholder="Message the community…"/><button disabled={!communityMessageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><Users size={28}/><b>Join this community</b><p>Join to read and contribute to its conversation.</p><button className="scnf-gold-button" onClick={() => void joinCommunity(selectedCommunity)}>Join community</button></div>}</> : <div className="scnf-empty"><Users size={30}/><b>Your community space</b><p>Select a community or create one to start a shared conversation.</p></div>}</div>
+      </div>
     </section>;
 
     if (activeTab === 'messages') return <section className="scnf-panel scnf-messages-panel">
