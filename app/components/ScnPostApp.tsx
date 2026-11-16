@@ -109,4 +109,3 @@ export default function ScnPostApp(){
   </AnimatePresence><Toaster position="top-center" richColors/>
  </div>;
 }
-}
