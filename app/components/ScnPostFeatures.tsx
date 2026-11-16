@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Bell, BarChart3, Check, Compass, Crown, Film, Heart, MessageCircle, Plus, Search, Send, Share2, UserPlus, Users, X } from 'lucide-react';
+import { Bell, BarChart3, Check, Compass, Crown, Film, Heart, Inbox, MessageCircle, Plus, Search, Send, Share2, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -19,9 +19,8 @@ type Community = { id: string; name: string; description: string; privacy: 'publ
 const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
   { id: 'friends', label: 'Friends', icon: Users },
   { id: 'reels', label: 'Reels', icon: Film },
-  { id: 'messages', label: 'Messages', icon: MessageCircle },
+  { id: 'messages', label: 'Inbox', icon: Inbox },
   { id: 'communities', label: 'Communities', icon: Users },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'profile', label: 'My profile', icon: Compass },
   { id: 'creator', label: 'Creator studio', icon: BarChart3 },
   { id: 'royal', label: 'Royal', icon: Crown },
@@ -432,12 +431,14 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     </section>;
 
     if (activeTab === 'messages') return <section className="scnf-panel scnf-messages-panel">
+      <div className="scnf-inbox-tabs"><button className="selected" onClick={() => onTabChange('messages')}>Messages</button><button onClick={() => onTabChange('notifications')}>Notifications</button></div>
       <div className="scnf-panel-head"><div><span className="scnf-kicker">PRIVATE CONVERSATIONS</span><h2>Messages</h2><p>Direct messages use the existing SCN chat message store.</p></div></div>
       <div className="scnf-chat-layout"><aside className="scnf-chat-people"><div className="scnf-chat-section-title">Start a conversation</div>{people.slice(0, 24).map(person => <button key={person.id} className={selectedPerson?.id === person.id ? 'selected' : ''} onClick={() => setSelectedPerson(person)}><Avatar name={person.name} src={person.avatar}/><span><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'member'}</small></span></button>)}{people.length === 0 && <p className="scnf-muted">Search for people in Friends first.</p>}</aside>
       <div className="scnf-chat-thread">{selectedPerson ? <><header><Avatar name={selectedPerson.name} src={selectedPerson.avatar}/><div><b>{selectedPerson.name}</b><small>SCN member</small></div></header><div className="scnf-chat-messages">{messages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'scnf-chat-bubble mine' : 'scnf-chat-bubble'}><p>{message.content || message.message}</p><small>{ago(message.created_at)}</small></div>)}{messages.length === 0 && <div className="scnf-empty">Start the conversation with {selectedPerson.name}.</div>}</div>{chatAllowed === false && <div className="scnf-chat-access-note">Direct messages require a mutual follow or an accepted SCN chat request. Follow each other first, or accept the request in SCN Chat.</div>}<form className="scnf-chat-compose" onSubmit={sendMessage}><input value={messageDraft} onChange={e => setMessageDraft(e.target.value)} placeholder="Write a message…"/><button disabled={messageBusy || !messageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><MessageCircle size={28}/><b>Choose someone to message</b><p>Select a member from the list to open a direct conversation.</p></div>}</div></div>
     </section>;
 
     if (activeTab === 'notifications') return <section className="scnf-panel">
+      <div className="scnf-inbox-tabs"><button onClick={() => onTabChange('messages')}>Messages</button><button className="selected" onClick={() => onTabChange('notifications')}>Notifications</button></div>
       <div className="scnf-panel-head"><div><span className="scnf-kicker">STAY IN THE LOOP</span><h2>Notifications</h2><p>Likes, replies, follows and activity across SCN.</p></div><div className="scnf-notice-tools"><button onClick={() => void markAllNotices()}>Mark all read</button><button onClick={() => void clearNotices()}>Clear all</button></div></div>
       <div className="scnf-filter-row"><button className={noticeFilter === 'all' ? 'selected' : ''} onClick={() => setNoticeFilter('all')}>All</button><button className={noticeFilter === 'unread' ? 'selected' : ''} onClick={() => setNoticeFilter('unread')}>Unread</button><span>{notices.filter(n => !n.read).length} unread</span></div>
       <div className="scnf-notices">{filteredNotices.map(notice => <button key={notice.id} className={notice.read ? 'scnf-notice read' : 'scnf-notice unread'} onClick={() => void markNotice(notice)}><span className="scnf-notice-icon"><Bell size={17}/></span><span><b>{notice.title}</b><small>{notice.body || notice.category || 'SCN activity'} · {ago(notice.created_at)}</small></span>{!notice.read && <i/>}</button>)}</div>
@@ -460,7 +461,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   };
 
   return <div className="scnf-workspace">
-    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
+    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={(tab.id === 'messages' ? activeTab === 'messages' || activeTab === 'notifications' : activeTab === tab.id) ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
     <main className="scnf-main">{renderBody()}</main>
   </div>;
 }
