@@ -20,7 +20,7 @@ function tag(xml: string, name: string) {
 }
 function parseFeed(xml: string, kind: FeedKind): FeedItem[] {
   const blocks: string[] = [];
-  const itemPattern = /<(item|entry)(?:\\s[^>]*)?>([\\s\\S]*?)<\\/\\1>/gi;
+  const itemPattern = /<(item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
   let itemMatch: RegExpExecArray | null;
   while ((itemMatch = itemPattern.exec(xml)) !== null) blocks.push(itemMatch[2]);
   return blocks.map((block, index) => {
