@@ -42,4 +42,4 @@ html[data-theme="dark"],body[data-theme="dark"]{background:#171116;color:#f7edf0
 
 
 .gw-auth{background:var(--gw-bg);color:var(--gw-text)}.gw-auth .auth-card{background:var(--gw-surface);border:1px solid var(--gw-line);color:var(--gw-text);box-shadow:var(--gw-shadow)}.gw-auth .auth-card p,.gw-auth .auth-card label{color:var(--gw-muted)}.gw-auth .auth-card input{background:var(--gw-soft);color:var(--gw-text);border-color:var(--gw-line)}.gw-auth .auth-brand{color:var(--gw-text)}.gw-auth .auth-brand small{color:var(--gw-muted)}.gw-auth .brand-mark{background:linear-gradient(145deg,#f1d9a6,#b98749);color:#3a1b28}.gw-auth .auth-foot{color:var(--gw-muted)}.gw-auth .primary-btn{background:linear-gradient(120deg,#7c354b,#641d32);color:#fff4ed}
-.gw-story-tile{cursor:pointer}.gw-story-viewer footer a{display:inline-flex;align-items:center;gap:5px;color:#f4d9df;font-size:11px;font-weight:800}
+.gw-story-tile{cursor:pointer}.gw-app .story-viewer footer a{display:inline-flex;align-items:center;gap:5px;color:#f4d9df;font-size:11px;font-weight:800}
