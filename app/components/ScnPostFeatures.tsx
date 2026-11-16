@@ -165,6 +165,26 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     setCommunityBusy(false);
   };
 
+  const joinCommunityByInvite = async () => {
+    if (!supabase || !communityGroupId.trim() || !communityInviteCode.trim()) return;
+    setCommunityBusy(true);
+    const id = communityGroupId.trim();
+    const { error } = await supabase.rpc('join_scn_post_group', { p_group_id: id, p_invite_code: communityInviteCode.trim() });
+    if (error) toast.error(error.message);
+    else {
+      await loadCommunities();
+      const { data, error: readError } = await supabase.from('scn_post_groups').select('id,name,description,privacy,invite_code,conversation_id,created_at').eq('id', id).single();
+      if (readError) toast.error(readError.message);
+      else if (data) {
+        const group = data as Community;
+        setSelectedCommunity(group); setCommunityMembers(old => new Set(old).add(group.id));
+        setCommunityGroupId(''); setCommunityInviteCode('');
+        await loadCommunityMessages(group); toast.success('Joined ' + group.name);
+      }
+    }
+    setCommunityBusy(false);
+  };
+
   const sendCommunityMessage = async (event: FormEvent) => {
     event.preventDefault();
     if (!supabase || !selectedCommunity || !communityMessageDraft.trim()) return;
@@ -405,7 +425,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
           <form className="scnf-community-create" onSubmit={createCommunity}><b>Create a community</b><input value={communityName} onChange={e => setCommunityName(e.target.value)} placeholder="Community name" maxLength={64} required/><textarea value={communityDescription} onChange={e => setCommunityDescription(e.target.value)} placeholder="What is this community about?" rows={2}/><div><select value={communityPrivacy} onChange={e => setCommunityPrivacy(e.target.value as 'public'|'private')}><option value="public">Public</option><option value="private">Private · invite code</option></select><button className="scnf-gold-button" disabled={communityBusy || !communityName.trim()}><Plus size={15}/> Create</button></div></form>
           <div className="scnf-community-title"><b>Discover spaces</b><span>{communities.length} found</span></div><div className="scnf-search"><Search size={16}/><input value={communitySearch} onChange={e => setCommunitySearch(e.target.value)} placeholder="Search communities"/></div>
           <div className="scnf-community-list">{communities.filter(group => (group.name + ' ' + group.description).toLowerCase().includes(communitySearch.toLowerCase())).map(group => <article key={group.id} className={selectedCommunity?.id === group.id ? 'selected' : ''}><div><b>{group.name}</b><small>{group.description || 'A community in SCN Post'} · {group.privacy}</small></div>{communityMembers.has(group.id) ? <button onClick={() => { setSelectedCommunity(group); void loadCommunityMessages(group); }}>Open</button> : <button onClick={() => void joinCommunity(group)} disabled={communityBusy}>Join</button>}</article>)}</div>
-          <div className="scnf-community-invite"><b>Join with an invite</b><input value={communityGroupId} onChange={e => setCommunityGroupId(e.target.value)} placeholder="Community ID"/><input value={communityInviteCode} onChange={e => setCommunityInviteCode(e.target.value)} placeholder="Invite code"/><button onClick={() => { const group = communities.find(item => item.id === communityGroupId.trim()); if (group) void joinCommunity(group, communityInviteCode); else toast.error('The community is not visible yet. Check the invite details.'); }} disabled={communityBusy || !communityGroupId.trim()}>Join private community</button></div>
+          <div className="scnf-community-invite"><b>Join with an invite</b><input value={communityGroupId} onChange={e => setCommunityGroupId(e.target.value)} placeholder="Community ID"/><input value={communityInviteCode} onChange={e => setCommunityInviteCode(e.target.value)} placeholder="Invite code"/><button onClick={() => void joinCommunityByInvite()} disabled={communityBusy || !communityGroupId.trim() || !communityInviteCode.trim()}>Join private community</button></div>
         </div>
         <div className="scnf-community-chat">{selectedCommunity ? <><header><div><b>{selectedCommunity.name}</b><small>{selectedCommunity.privacy} community</small></div>{communityMembers.has(selectedCommunity.id) && <button onClick={() => void shareCommunityInvite(selectedCommunity)}>Invite</button>}</header>{communityMembers.has(selectedCommunity.id) ? <><div className="scnf-community-messages">{communityMessages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'mine' : ''}><p>{message.content || message.message}</p><small>{message.sender_id === user.id ? 'You' : 'Member'} · {ago(message.created_at)}</small></div>)}{communityMessages.length === 0 && <div className="scnf-empty">Start the community conversation.</div>}</div><form className="scnf-chat-compose" onSubmit={sendCommunityMessage}><input value={communityMessageDraft} onChange={e => setCommunityMessageDraft(e.target.value)} placeholder="Message the community…"/><button disabled={!communityMessageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><Users size={28}/><b>Join this community</b><p>Join to read and contribute to its conversation.</p><button className="scnf-gold-button" onClick={() => void joinCommunity(selectedCommunity)}>Join community</button></div>}</> : <div className="scnf-empty"><Users size={30}/><b>Your community space</b><p>Select a community or create one to start a shared conversation.</p></div>}</div>
       </div>
