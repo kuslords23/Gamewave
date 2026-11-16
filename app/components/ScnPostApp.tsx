@@ -9,7 +9,7 @@ import type {ScnPost,ScnComment,PostType} from '../lib/feedTypes';
 import FeedPostText from './feed/FeedPostText';
 import ScnPostFeatures from './ScnPostFeatures';
 type Tab='home'|'following'|'explore';
-type FeatureTab='friends'|'reels'|'messages'|'notifications'|'profile'|'creator';
+type FeatureTab='friends'|'reels'|'messages'|'communities'|'notifications'|'profile'|'creator'|'royal';
 type Profile={id:string;name:string;avatar?:string;username?:string};
 const COLS='id,post_type,user_id,user_name,user_avatar,title,description,content,hashtags,media_url,media_mime,storage_path,link_url,link_platform,embed_url,likes,comments_count,reposts,created_at,sound_source_post_id,sound_title,sound_artist,reply_to_post_id,reply_to_comment_id,cover_url,view_count,listen_count';
 const ago=(s:string)=>{const n=Math.max(0,Math.floor((Date.now()-new Date(s).getTime())/60000));return n<1?'Just now':n<60?n+'m':n<1440?Math.floor(n/60)+'h':Math.floor(n/1440)+'d';};
