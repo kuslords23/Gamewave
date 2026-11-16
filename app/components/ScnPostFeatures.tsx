@@ -1,14 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Bell, BarChart3, Check, Compass, Crown, Film, Heart, MessageCircle, Plus, Search, Send, Share2, UserPlus, Users, X } from 'lucide-react';
+import { Bell, BarChart3, Check, Compass, Crown, Film, Heart, Inbox, MessageCircle, Plus, Search, Send, Share2, UserPlus, Users, X, Settings, ShieldCheck, Eye, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { ScnPost } from '../lib/feedTypes';
 import './ScnPostFeatures.css';
 
-type FeatureTab = 'friends' | 'reels' | 'messages' | 'communities' | 'notifications' | 'profile' | 'creator' | 'royal';
+type FeatureTab = 'friends' | 'reels' | 'messages' | 'communities' | 'notifications' | 'profile' | 'creator' | 'royal' | 'settings';
+type RoyalPreferences = { activityInsights: boolean; contentInteractions: boolean; discoveryActivity: boolean; creatorActivity: boolean; allowDrafts: boolean; allowContentManagement: boolean; };
+const DEFAULT_ROYAL_PREFERENCES: RoyalPreferences = { activityInsights: false, contentInteractions: false, discoveryActivity: false, creatorActivity: false, allowDrafts: true, allowContentManagement: false };
+type AppPreferences = { personalizedFeed: boolean; ecosystemStories: boolean; autoplayReels: boolean; pushNotifications: boolean; emailNotifications: boolean; showActivityStatus: boolean };
+const DEFAULT_APP_PREFERENCES: AppPreferences = { personalizedFeed: true, ecosystemStories: true, autoplayReels: false, pushNotifications: true, emailNotifications: false, showActivityStatus: true };
 type Profile = { id: string; name: string; username?: string; avatar?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
@@ -19,12 +23,12 @@ type Community = { id: string; name: string; description: string; privacy: 'publ
 const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
   { id: 'friends', label: 'Friends', icon: Users },
   { id: 'reels', label: 'Reels', icon: Film },
-  { id: 'messages', label: 'Messages', icon: MessageCircle },
+  { id: 'messages', label: 'Inbox', icon: Inbox },
   { id: 'communities', label: 'Communities', icon: Users },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'profile', label: 'My profile', icon: Compass },
   { id: 'creator', label: 'Creator studio', icon: BarChart3 },
   { id: 'royal', label: 'Royal', icon: Crown },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 function Avatar({ name, src }: { name: string; src?: string | null }) {
@@ -76,6 +80,9 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [communityMessages, setCommunityMessages] = useState<ChatMessage[]>([]);
   const [communityMessageDraft, setCommunityMessageDraft] = useState('');
+  const [royalPreferences, setRoyalPreferences] = useState<RoyalPreferences>(() => ({ ...DEFAULT_ROYAL_PREFERENCES, ...((user.user_metadata?.gamewave_royal_preferences as Partial<RoyalPreferences> | undefined) || {}) }));
+  const [preferencesBusy, setPreferencesBusy] = useState(false);
+  const [appPreferences, setAppPreferences] = useState<AppPreferences>(() => ({ ...DEFAULT_APP_PREFERENCES, ...((user.user_metadata?.gamewave_app_preferences as Partial<AppPreferences> | undefined) || {}) }));
 
   const currentName = profile?.name || String(user.user_metadata?.name || user.email?.split('@')[0] || 'SCN member');
   const currentAvatar = profile?.avatar || String(user.user_metadata?.avatar || '👑');
@@ -341,7 +348,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
       const response = await fetch('/api/royal/companion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-supabase-auth': token, 'Accept': 'text/event-stream, application/json' },
-        body: JSON.stringify({ conversationId: 'scn-post', prompt, history: royalTurns.slice(-12), mode: 'royal' }),
+        body: JSON.stringify({ conversationId: 'scn-post', prompt, history: royalTurns.slice(-12), mode: 'royal', royalPreferences }),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -406,6 +413,39 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
       <p className="scnf-royal-footnote">Royal uses the shared KUS intelligence gateway. It does not bypass Guardian approval for protected actions.</p>
     </section>;
 
+
+    if (activeTab === 'settings') return <section className="scnf-panel scnf-settings-panel">
+      <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR GAMEWAVE CONTROL CENTRE</span><h2>Settings</h2><p>Manage your account, privacy, app experience and Royal's access.</p></div><Settings size={24}/></div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><Users size={19}/><div><b>Feed & content</b><small>Choose how Gamewave presents your social world.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Personalised feed</b><small>Use your selected interests and eligible activity to tailor recommendations.</small></span><input type="checkbox" checked={appPreferences.personalizedFeed} onChange={e => setAppPreferences(v => ({...v,personalizedFeed:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Ecosystem Stories</b><small>Show stories from connected KUS applications when an authorised source is connected.</small></span><input type="checkbox" checked={appPreferences.ecosystemStories} onChange={e => setAppPreferences(v => ({...v,ecosystemStories:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Autoplay Reels</b><small>Automatically play videos as you browse the dedicated Reels experience.</small></span><input type="checkbox" checked={appPreferences.autoplayReels} onChange={e => setAppPreferences(v => ({...v,autoplayReels:e.target.checked}))}/></label>
+      </div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><Bell size={19}/><div><b>Notifications</b><small>Set your preferred notification channels.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Push notifications</b><small>Preference for app and device notifications when delivery is configured.</small></span><input type="checkbox" checked={appPreferences.pushNotifications} onChange={e => setAppPreferences(v => ({...v,pushNotifications:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Email notifications</b><small>Preference for account and activity email updates.</small></span><input type="checkbox" checked={appPreferences.emailNotifications} onChange={e => setAppPreferences(v => ({...v,emailNotifications:e.target.checked}))}/></label>
+      </div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><ShieldCheck size={19}/><div><b>Privacy & Royal permissions</b><small>You decide which activity Royal can use to help you.</small></div></div>
+        <div className="scnf-settings-notice"><b>Transparent by design</b><p>Royal's activity context is limited to the categories you enable. Private message and community-chat contents, passwords, payment details and sensitive account data are excluded. These preferences do not bypass Guardian approval or grant silent permission to publish, message or change your account.</p></div>
+        <label className="scnf-setting-row"><span><b>Activity insights</b><small>Allow Royal to use eligible Gamewave activity signals to provide summaries and suggestions.</small></span><input type="checkbox" checked={royalPreferences.activityInsights} onChange={e => setRoyalPreferences(v => ({...v,activityInsights:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Content interactions</b><small>Likes, saves, follows, comments and shares. Message contents are never included.</small></span><input type="checkbox" checked={royalPreferences.contentInteractions} onChange={e => setRoyalPreferences(v => ({...v,contentInteractions:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Feed & discovery activity</b><small>Topics explored, posts viewed and Reels watched, not private browsing data.</small></span><input type="checkbox" checked={royalPreferences.discoveryActivity} onChange={e => setRoyalPreferences(v => ({...v,discoveryActivity:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Creator & community activity</b><small>Your own publishing activity and community participation metadata, excluding private conversations.</small></span><input type="checkbox" checked={royalPreferences.creatorActivity} onChange={e => setRoyalPreferences(v => ({...v,creatorActivity:e.target.checked}))}/></label>
+      </div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><Sparkles size={19}/><div><b>Royal's agentic abilities</b><small>Choose what Royal may prepare and what always needs your approval.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Prepare drafts and plans</b><small>Royal may prepare post drafts, content calendars and suggested actions for your review.</small></span><input type="checkbox" checked={royalPreferences.allowDrafts} onChange={e => setRoyalPreferences(v => ({...v,allowDrafts:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Assist with managing my content</b><small>Allow Royal to organise and propose edits to your own content. Publishing, deleting or sending always requires a separate confirmation.</small></span><input type="checkbox" checked={royalPreferences.allowContentManagement} onChange={e => setRoyalPreferences(v => ({...v,allowContentManagement:e.target.checked}))}/></label>
+        <div className="scnf-settings-notice"><b>Always approval-gated</b><p>Publishing posts, sending messages, changing account/privacy settings, deleting content, inviting people, spending money or acting outside Gamewave requires explicit user confirmation and applicable Guardian authorization.</p></div>
+      </div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><SlidersHorizontal size={19}/><div><b>Account & visibility</b><small>Display and profile controls.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Show activity status</b><small>Allow other members to see when you are active, where presence is supported.</small></span><input type="checkbox" checked={appPreferences.showActivityStatus} onChange={e => setAppPreferences(v => ({...v,showActivityStatus:e.target.checked}))}/></label>
+        <div className="scnf-setting-static"><span><b>Theme</b><small>Use the appearance switch in the Gamewave header to change light or dark mode.</small></span></div>
+        <div className="scnf-setting-static"><span><b>Account</b><small>{user.email || 'Signed-in account'} · Your SCN identity</small></span></div>
+      </div>
+      <div className="scnf-settings-actions"><button className="scnf-gold-button" disabled={preferencesBusy} onClick={async()=>{if(!supabase)return;setPreferencesBusy(true);const result=await supabase.auth.updateUser({data:{gamewave_royal_preferences:royalPreferences,gamewave_app_preferences:appPreferences}});setPreferencesBusy(false);if(result.error)toast.error('Could not save settings: '+result.error.message);else toast.success('Your Gamewave settings were saved.');}}>{preferencesBusy?'Saving…':'Save settings'}</button><button className="scnf-settings-reset" onClick={()=>{setRoyalPreferences(DEFAULT_ROYAL_PREFERENCES);setAppPreferences(DEFAULT_APP_PREFERENCES);}}>Reset preferences</button></div>
+      <p className="scnf-settings-footnote">You can change or withdraw these permissions at any time. Activity monitoring is opt-in and only becomes active for signal categories that Gamewave explicitly instruments and makes available to Royal.</p>
+    </section>;
+
     if (activeTab === 'friends') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR PEOPLE</span><h2>Find your circle</h2><p>Discover SCN members and build your following.</p></div><span className="scnf-count">{following.size} following</span></div>
       <div className="scnf-search"><Search size={18}/><input value={peopleQuery} onChange={e => setPeopleQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="Search by name or username"/><button onClick={() => void searchPeople()}>Search</button></div>
@@ -432,12 +472,14 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     </section>;
 
     if (activeTab === 'messages') return <section className="scnf-panel scnf-messages-panel">
+      <div className="scnf-inbox-tabs"><button className="selected" onClick={() => onTabChange('messages')}>Messages</button><button onClick={() => onTabChange('notifications')}>Notifications</button></div>
       <div className="scnf-panel-head"><div><span className="scnf-kicker">PRIVATE CONVERSATIONS</span><h2>Messages</h2><p>Direct messages use the existing SCN chat message store.</p></div></div>
       <div className="scnf-chat-layout"><aside className="scnf-chat-people"><div className="scnf-chat-section-title">Start a conversation</div>{people.slice(0, 24).map(person => <button key={person.id} className={selectedPerson?.id === person.id ? 'selected' : ''} onClick={() => setSelectedPerson(person)}><Avatar name={person.name} src={person.avatar}/><span><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'member'}</small></span></button>)}{people.length === 0 && <p className="scnf-muted">Search for people in Friends first.</p>}</aside>
       <div className="scnf-chat-thread">{selectedPerson ? <><header><Avatar name={selectedPerson.name} src={selectedPerson.avatar}/><div><b>{selectedPerson.name}</b><small>SCN member</small></div></header><div className="scnf-chat-messages">{messages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'scnf-chat-bubble mine' : 'scnf-chat-bubble'}><p>{message.content || message.message}</p><small>{ago(message.created_at)}</small></div>)}{messages.length === 0 && <div className="scnf-empty">Start the conversation with {selectedPerson.name}.</div>}</div>{chatAllowed === false && <div className="scnf-chat-access-note">Direct messages require a mutual follow or an accepted SCN chat request. Follow each other first, or accept the request in SCN Chat.</div>}<form className="scnf-chat-compose" onSubmit={sendMessage}><input value={messageDraft} onChange={e => setMessageDraft(e.target.value)} placeholder="Write a message…"/><button disabled={messageBusy || !messageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><MessageCircle size={28}/><b>Choose someone to message</b><p>Select a member from the list to open a direct conversation.</p></div>}</div></div>
     </section>;
 
     if (activeTab === 'notifications') return <section className="scnf-panel">
+      <div className="scnf-inbox-tabs"><button onClick={() => onTabChange('messages')}>Messages</button><button className="selected" onClick={() => onTabChange('notifications')}>Notifications</button></div>
       <div className="scnf-panel-head"><div><span className="scnf-kicker">STAY IN THE LOOP</span><h2>Notifications</h2><p>Likes, replies, follows and activity across SCN.</p></div><div className="scnf-notice-tools"><button onClick={() => void markAllNotices()}>Mark all read</button><button onClick={() => void clearNotices()}>Clear all</button></div></div>
       <div className="scnf-filter-row"><button className={noticeFilter === 'all' ? 'selected' : ''} onClick={() => setNoticeFilter('all')}>All</button><button className={noticeFilter === 'unread' ? 'selected' : ''} onClick={() => setNoticeFilter('unread')}>Unread</button><span>{notices.filter(n => !n.read).length} unread</span></div>
       <div className="scnf-notices">{filteredNotices.map(notice => <button key={notice.id} className={notice.read ? 'scnf-notice read' : 'scnf-notice unread'} onClick={() => void markNotice(notice)}><span className="scnf-notice-icon"><Bell size={17}/></span><span><b>{notice.title}</b><small>{notice.body || notice.category || 'SCN activity'} · {ago(notice.created_at)}</small></span>{!notice.read && <i/>}</button>)}</div>
@@ -460,7 +502,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   };
 
   return <div className="scnf-workspace">
-    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
+    <header className="scnf-topbar"><div><span className="scnf-brand-dot">G</span><div><b>GAMEWAVE</b><small>YOUR SOCIAL WORLD</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={(tab.id === 'messages' ? activeTab === 'messages' || activeTab === 'notifications' : activeTab === tab.id) ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
     <main className="scnf-main">{renderBody()}</main>
   </div>;
 }
