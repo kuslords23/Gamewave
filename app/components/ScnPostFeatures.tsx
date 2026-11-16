@@ -97,13 +97,29 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     setNotices((data || []) as Notice[]);
   }, [user.id]);
 
+  const checkChatAccess = useCallback(async (person: Person) => {
+    if (!supabase) return false;
+    const [mutual, accepted] = await Promise.all([
+      supabase.from('follows').select('follower_id').eq('target_type', 'user').or('and(follower_id.eq.' + user.id + ',target_id.eq.' + person.id + '),and(follower_id.eq.' + person.id + ',target_id.eq.' + user.id + ')'),
+      supabase.from('chat_requests').select('id').eq('status', 'accepted').or('and(from_user_id.eq.' + user.id + ',to_user_id.eq.' + person.id + '),and(from_user_id.eq.' + person.id + ',to_user_id.eq.' + user.id + ')').limit(1),
+    ]);
+    const rows = mutual.data || [];
+    const mutualFollow = rows.some(row => String(row.follower_id) === user.id) && rows.some(row => String(row.follower_id) === person.id);
+    return mutualFollow || Boolean((accepted.data || []).length);
+  }, [user.id]);
+
   const loadMessages = useCallback(async (person: Person) => {
     if (!supabase) return;
+    const allowed = await checkChatAccess(person);
+    setChatAllowed(allowed);
+    if (!allowed) { setMessages([]); return; }
     const id = conversationId(user.id, person.id);
+    const membership = await supabase.from('conversation_members').upsert({ conversation_id: id, user_id: user.id }, { onConflict: 'conversation_id,user_id' });
+    if (membership.error) { toast.error(membership.error.message); return; }
     const { data, error } = await supabase.from('chat_messages').select('id,conversation_id,sender_id,content,message,created_at').eq('conversation_id', id).order('created_at', { ascending: true }).limit(200);
     if (error) { toast.error('Could not load conversation: ' + error.message); return; }
     setMessages((data || []) as ChatMessage[]);
-  }, [user.id]);
+  }, [user.id, checkChatAccess]);
 
   useEffect(() => { void loadFollowing(); }, [loadFollowing]);
   useEffect(() => { if (!supabase) return; void supabase.from('feed_post_likes').select('post_id').eq('user_id', user.id).then(({ data }) => setLiked(new Set((data || []).map(row => String(row.post_id))))); void supabase.from('feed_post_reposts').select('post_id').eq('user_id', user.id).then(({ data }) => setReposted(new Set((data || []).map(row => String(row.post_id))))); }, [user.id]);
@@ -126,13 +142,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     setMessageBusy(true);
     const content = messageDraft.trim();
     const cid = conversationId(user.id, selectedPerson.id);
-    const [mutual, accepted] = await Promise.all([
-      supabase.from('follows').select('follower_id').eq('target_type', 'user').or('and(follower_id.eq.' + user.id + ',target_id.eq.' + selectedPerson.id + '),and(follower_id.eq.' + selectedPerson.id + ',target_id.eq.' + user.id + ')'),
-      supabase.from('chat_requests').select('id').eq('status', 'accepted').or('and(from_user_id.eq.' + user.id + ',to_user_id.eq.' + selectedPerson.id + '),and(from_user_id.eq.' + selectedPerson.id + ',to_user_id.eq.' + user.id + ')').limit(1),
-    ]);
-    const mutualRows = mutual.data || [];
-    const hasMutualFollow = mutualRows.some(row => String(row.follower_id) === user.id) && mutualRows.some(row => String(row.follower_id) === selectedPerson.id);
-    if (!hasMutualFollow && !(accepted.data || []).length) { setChatAllowed(false); toast.error('Direct messaging opens after a mutual follow or an accepted chat request.'); setMessageBusy(false); return; }
+    if (!await checkChatAccess(selectedPerson)) { setChatAllowed(false); toast.error('Direct messaging opens after a mutual follow or an accepted chat request.'); setMessageBusy(false); return; }
     const membership = await supabase.from('conversation_members').upsert({ conversation_id: cid, user_id: user.id }, { onConflict: 'conversation_id,user_id' });
     if (membership.error) { toast.error(membership.error.message); setMessageBusy(false); return; }
     const { error } = await supabase.from('chat_messages').insert({ conversation_id: cid, sender_id: user.id, content, message: content, read: false });
