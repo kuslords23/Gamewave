@@ -11,6 +11,8 @@ import './ScnPostFeatures.css';
 type FeatureTab = 'friends' | 'reels' | 'messages' | 'communities' | 'notifications' | 'profile' | 'creator' | 'royal' | 'settings';
 type RoyalPreferences = { activityInsights: boolean; contentInteractions: boolean; discoveryActivity: boolean; creatorActivity: boolean; allowDrafts: boolean; allowContentManagement: boolean; };
 const DEFAULT_ROYAL_PREFERENCES: RoyalPreferences = { activityInsights: false, contentInteractions: false, discoveryActivity: false, creatorActivity: false, allowDrafts: true, allowContentManagement: false };
+type AppPreferences = { personalizedFeed: boolean; ecosystemStories: boolean; autoplayReels: boolean; pushNotifications: boolean; emailNotifications: boolean; showActivityStatus: boolean };
+const DEFAULT_APP_PREFERENCES: AppPreferences = { personalizedFeed: true, ecosystemStories: true, autoplayReels: false, pushNotifications: true, emailNotifications: false, showActivityStatus: true };
 type Profile = { id: string; name: string; username?: string; avatar?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
@@ -80,6 +82,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [communityMessageDraft, setCommunityMessageDraft] = useState('');
   const [royalPreferences, setRoyalPreferences] = useState<RoyalPreferences>(() => ({ ...DEFAULT_ROYAL_PREFERENCES, ...((user.user_metadata?.gamewave_royal_preferences as Partial<RoyalPreferences> | undefined) || {}) }));
   const [preferencesBusy, setPreferencesBusy] = useState(false);
+  const [appPreferences, setAppPreferences] = useState<AppPreferences>(() => ({ ...DEFAULT_APP_PREFERENCES, ...((user.user_metadata?.gamewave_app_preferences as Partial<AppPreferences> | undefined) || {}) }));
 
   const currentName = profile?.name || String(user.user_metadata?.name || user.email?.split('@')[0] || 'SCN member');
   const currentAvatar = profile?.avatar || String(user.user_metadata?.avatar || '👑');
@@ -413,6 +416,15 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
 
     if (activeTab === 'settings') return <section className="scnf-panel scnf-settings-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR GAMEWAVE CONTROL CENTRE</span><h2>Settings</h2><p>Manage your account, privacy, app experience and Royal's access.</p></div><Settings size={24}/></div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><Users size={19}/><div><b>Feed & content</b><small>Choose how Gamewave presents your social world.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Personalised feed</b><small>Use your selected interests and eligible activity to tailor recommendations.</small></span><input type="checkbox" checked={appPreferences.personalizedFeed} onChange={e => setAppPreferences(v => ({...v,personalizedFeed:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Ecosystem Stories</b><small>Show stories from connected KUS applications when an authorised source is connected.</small></span><input type="checkbox" checked={appPreferences.ecosystemStories} onChange={e => setAppPreferences(v => ({...v,ecosystemStories:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Autoplay Reels</b><small>Automatically play videos as you browse the dedicated Reels experience.</small></span><input type="checkbox" checked={appPreferences.autoplayReels} onChange={e => setAppPreferences(v => ({...v,autoplayReels:e.target.checked}))}/></label>
+      </div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><Bell size={19}/><div><b>Notifications</b><small>Set your preferred notification channels.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Push notifications</b><small>Preference for app and device notifications when delivery is configured.</small></span><input type="checkbox" checked={appPreferences.pushNotifications} onChange={e => setAppPreferences(v => ({...v,pushNotifications:e.target.checked}))}/></label>
+        <label className="scnf-setting-row"><span><b>Email notifications</b><small>Preference for account and activity email updates.</small></span><input type="checkbox" checked={appPreferences.emailNotifications} onChange={e => setAppPreferences(v => ({...v,emailNotifications:e.target.checked}))}/></label>
+      </div>
       <div className="scnf-settings-group"><div className="scnf-settings-heading"><ShieldCheck size={19}/><div><b>Privacy & Royal permissions</b><small>You decide which activity Royal can use to help you.</small></div></div>
         <div className="scnf-settings-notice"><b>Transparent by design</b><p>Royal's activity context is limited to the categories you enable. Private message and community-chat contents, passwords, payment details and sensitive account data are excluded. These preferences do not bypass Guardian approval or grant silent permission to publish, message or change your account.</p></div>
         <label className="scnf-setting-row"><span><b>Activity insights</b><small>Allow Royal to use eligible Gamewave activity signals to provide summaries and suggestions.</small></span><input type="checkbox" checked={royalPreferences.activityInsights} onChange={e => setRoyalPreferences(v => ({...v,activityInsights:e.target.checked}))}/></label>
@@ -425,11 +437,12 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
         <label className="scnf-setting-row"><span><b>Assist with managing my content</b><small>Allow Royal to organise and propose edits to your own content. Publishing, deleting or sending always requires a separate confirmation.</small></span><input type="checkbox" checked={royalPreferences.allowContentManagement} onChange={e => setRoyalPreferences(v => ({...v,allowContentManagement:e.target.checked}))}/></label>
         <div className="scnf-settings-notice"><b>Always approval-gated</b><p>Publishing posts, sending messages, changing account/privacy settings, deleting content, inviting people, spending money or acting outside Gamewave requires explicit user confirmation and applicable Guardian authorization.</p></div>
       </div>
-      <div className="scnf-settings-group"><div className="scnf-settings-heading"><SlidersHorizontal size={19}/><div><b>App preferences</b><small>Display and account controls.</small></div></div>
+      <div className="scnf-settings-group"><div className="scnf-settings-heading"><SlidersHorizontal size={19}/><div><b>Account & visibility</b><small>Display and profile controls.</small></div></div>
+        <label className="scnf-setting-row"><span><b>Show activity status</b><small>Allow other members to see when you are active, where presence is supported.</small></span><input type="checkbox" checked={appPreferences.showActivityStatus} onChange={e => setAppPreferences(v => ({...v,showActivityStatus:e.target.checked}))}/></label>
         <div className="scnf-setting-static"><span><b>Theme</b><small>Use the appearance switch in the Gamewave header to change light or dark mode.</small></span></div>
         <div className="scnf-setting-static"><span><b>Account</b><small>{user.email || 'Signed-in account'} · Your SCN identity</small></span></div>
       </div>
-      <div className="scnf-settings-actions"><button className="scnf-gold-button" disabled={preferencesBusy} onClick={async()=>{if(!supabase)return;setPreferencesBusy(true);const result=await supabase.auth.updateUser({data:{gamewave_royal_preferences:royalPreferences}});setPreferencesBusy(false);if(result.error)toast.error('Could not save settings: '+result.error.message);else toast.success('Your Gamewave settings were saved.');}}>{preferencesBusy?'Saving…':'Save settings'}</button><button className="scnf-settings-reset" onClick={()=>setRoyalPreferences(DEFAULT_ROYAL_PREFERENCES)}>Reset Royal permissions</button></div>
+      <div className="scnf-settings-actions"><button className="scnf-gold-button" disabled={preferencesBusy} onClick={async()=>{if(!supabase)return;setPreferencesBusy(true);const result=await supabase.auth.updateUser({data:{gamewave_royal_preferences:royalPreferences,gamewave_app_preferences:appPreferences}});setPreferencesBusy(false);if(result.error)toast.error('Could not save settings: '+result.error.message);else toast.success('Your Gamewave settings were saved.');}}>{preferencesBusy?'Saving…':'Save settings'}</button><button className="scnf-settings-reset" onClick={()=>{setRoyalPreferences(DEFAULT_ROYAL_PREFERENCES);setAppPreferences(DEFAULT_APP_PREFERENCES);}}>Reset preferences</button></div>
       <p className="scnf-settings-footnote">You can change or withdraw these permissions at any time. Activity monitoring is opt-in and only becomes active for signal categories that Gamewave explicitly instruments and makes available to Royal.</p>
     </section>;
 
