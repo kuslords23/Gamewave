@@ -60,6 +60,10 @@ npm install
 npm run dev
 ```
 
+## Vercel deployment configuration
+
+The linked Vercel project uses the Next.js framework preset, automatic Next.js output detection, and Node.js 20. Do not set the output directory to `public`; Next.js production output is managed by Vercel.
+
 ## Verification and deployment status
 
 This branch contains the expanded feature implementation. The independent GitHub Actions production build and TypeScript validation passed on commit `69989896b8fa8add9bd360c8e944753e2bcd24e4`. Vercel's deployment status remains blocked by the account's build-rate limit, so this branch has **not** been production-deployed. Apply migrations only after reviewing them against the live SCN schema, then exercise the flows with real SCN accounts before merging or deploying.
