@@ -102,3 +102,68 @@ drop trigger if exists tr_notify_scn_post_comment on public.feed_comments;
 create trigger tr_notify_scn_post_comment
   after insert on public.feed_comments
   for each row execute function public.notify_scn_post_comment();
+
+-- Likes notify the owner while the existing 052 trigger remains responsible for counts.
+create or replace function public.notify_scn_post_like()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_author uuid;
+begin
+  select user_id into v_author from public.feed_posts where id = new.post_id;
+  if v_author is not null and v_author <> new.user_id then
+    insert into public.notifications(user_id, title, body, category, metadata)
+    values (
+      v_author,
+      'Someone liked your post',
+      'Your post received a new like.',
+      'like',
+      jsonb_build_object('postId', new.post_id, 'actorId', new.user_id)
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tr_notify_scn_post_like on public.feed_post_likes;
+create trigger tr_notify_scn_post_like
+  after insert on public.feed_post_likes
+  for each row execute function public.notify_scn_post_like();
+
+-- User follows create notifications for the followed profile.
+create or replace function public.notify_scn_post_follow()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_target uuid;
+begin
+  if new.target_type <> 'user' then return new; end if;
+  begin
+    v_target := new.target_id::uuid;
+  exception when invalid_text_representation then
+    return new;
+  end;
+  if v_target is not null and v_target <> new.follower_id then
+    insert into public.notifications(user_id, title, body, category, metadata)
+    values (
+      v_target,
+      'New follower',
+      'Someone started following your profile.',
+      'follow',
+      jsonb_build_object('followerId', new.follower_id, 'targetId', new.target_id)
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tr_notify_scn_post_follow on public.follows;
+create trigger tr_notify_scn_post_follow
+  after insert on public.follows
+  for each row execute function public.notify_scn_post_follow();
