@@ -62,4 +62,4 @@ npm run dev
 
 ## Verification and deployment status
 
-This branch contains the expanded feature implementation. It has **not** been production-deployed. The earlier Vercel build attempts were blocked by the account's build-rate limit, so a successful production build is not yet verified. Apply migrations only after reviewing them against the live SCN schema, then run build/type-check and exercise the flows with real SCN accounts before merging or deploying.
+This branch contains the expanded feature implementation. The independent GitHub Actions production build and TypeScript validation passed on commit `69989896b8fa8add9bd360c8e944753e2bcd24e4`. Vercel's deployment status remains blocked by the account's build-rate limit, so this branch has **not** been production-deployed. Apply migrations only after reviewing them against the live SCN schema, then exercise the flows with real SCN accounts before merging or deploying.
