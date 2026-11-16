@@ -27,6 +27,16 @@ export async function POST(request: NextRequest) {
 
   const origin = (process.env.KUS_AI_ORIGIN || 'https://kus-ai-app.vercel.app').replace(/\/$/, '');
   const conversationId = typeof body?.conversationId === 'string' ? body.conversationId.slice(0, 120) : 'scn-post';
+  const requested = body?.royalPreferences && typeof body.royalPreferences === 'object' ? body.royalPreferences as Record<string, unknown> : {};
+  const royalPreferences = {
+    activityInsights: requested.activityInsights === true,
+    contentInteractions: requested.contentInteractions === true,
+    discoveryActivity: requested.discoveryActivity === true,
+    creatorActivity: requested.creatorActivity === true,
+    allowDrafts: requested.allowDrafts !== false,
+    allowContentManagement: requested.allowContentManagement === true,
+  };
+
   const forwarded = {
     companionId: 'hub',
     conversationId,
@@ -35,10 +45,13 @@ export async function POST(request: NextRequest) {
       'Help with social publishing, community discovery, creator workflows, profiles, short-form video, conversations and understanding SCN activity.',
       'SCN Post shares the Hub identity, feed, social graph and KUS Core memory. Do not invent app records, audience metrics, content, or completed actions.',
       'Publishing, account changes and other consequential actions must use the existing app workflow and Guardian authorization where applicable.',
+      'The following Gamewave Royal preferences are user-selected context permissions, not independent authorization to execute actions: ' + JSON.stringify(royalPreferences) + '.',
+      'Only use Gamewave activity signals explicitly supplied by the app and covered by enabled permissions. Do not infer or claim access to unprovided activity. Never inspect or request private message contents, credentials, payment details or sensitive account data.',
       'User request: ' + prompt,
     ].join('\n'),
     history,
     mode: 'royal',
+    royalPreferences,
   };
 
   try {
