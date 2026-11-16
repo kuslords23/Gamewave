@@ -32,8 +32,8 @@ function ago(value: string) {
 }
 function threadId(a: string, b: string) { return [a, b].sort().join(':'); }
 
-export default function ScnPostFeatures({ activeTab, onClose, user, profile, posts, onCreatePost }: {
-  activeTab: FeatureTab; onClose: () => void; user: User; profile: Profile | null; posts: ScnPost[]; onCreatePost: () => void;
+export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user, profile, posts, onCreatePost }: {
+  activeTab: FeatureTab; onTabChange: (tab: FeatureTab) => void; onClose: () => void; user: User; profile: Profile | null; posts: ScnPost[]; onCreatePost: () => void;
 }) {
   const [people, setPeople] = useState<Person[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -105,6 +105,7 @@ export default function ScnPostFeatures({ activeTab, onClose, user, profile, pos
   }, [user.id]);
 
   useEffect(() => { void loadFollowing(); }, [loadFollowing]);
+  useEffect(() => { if (!supabase) return; void supabase.from('feed_post_likes').select('post_id').eq('user_id', user.id).then(({ data }) => setLiked(new Set((data || []).map(row => String(row.post_id))))); void supabase.from('feed_post_reposts').select('post_id').eq('user_id', user.id).then(({ data }) => setReposted(new Set((data || []).map(row => String(row.post_id))))); }, [user.id]);
   useEffect(() => { if (activeTab === 'friends') void searchPeople(); }, [activeTab, searchPeople]);
   useEffect(() => { if (activeTab === 'notifications') void loadNotices(); }, [activeTab, loadNotices]);
   useEffect(() => { if (activeTab === 'messages' && selectedPerson) void loadMessages(selectedPerson); }, [activeTab, selectedPerson, loadMessages]);
@@ -193,7 +194,7 @@ export default function ScnPostFeatures({ activeTab, onClose, user, profile, pos
     if (activeTab === 'friends') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR PEOPLE</span><h2>Find your circle</h2><p>Discover SCN members and build your following.</p></div><span className="scnf-count">{following.size} following</span></div>
       <div className="scnf-search"><Search size={18}/><input value={peopleQuery} onChange={e => setPeopleQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="Search by name or username"/><button onClick={() => void searchPeople()}>Search</button></div>
-      {peopleBusy ? <p className="scnf-muted">Finding members…</p> : <div className="scnf-people-grid">{people.map(person => <article className="scnf-person" key={person.id}><Avatar name={person.name} src={person.avatar}/><div className="scnf-person-copy"><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'scn-member'}</small></div><button className={following.has(person.id) ? 'scnf-follow is-following' : 'scnf-follow'} onClick={() => void toggleFollow(person)}>{following.has(person.id) ? <Check size={15}/> : <UserPlus size={15}/>} {following.has(person.id) ? 'Following' : 'Follow'}</button><button className="scnf-message-shortcut" onClick={() => { setSelectedPerson(person); }} title="Message"><MessageCircle size={17}/></button></article>)}</div>}
+      {peopleBusy ? <p className="scnf-muted">Finding members…</p> : <div className="scnf-people-grid">{people.map(person => <article className="scnf-person" key={person.id}><Avatar name={person.name} src={person.avatar}/><div className="scnf-person-copy"><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'scn-member'}</small></div><button className={following.has(person.id) ? 'scnf-follow is-following' : 'scnf-follow'} onClick={() => void toggleFollow(person)}>{following.has(person.id) ? <Check size={15}/> : <UserPlus size={15}/>} {following.has(person.id) ? 'Following' : 'Follow'}</button><button className="scnf-message-shortcut" onClick={() => { setSelectedPerson(person); onTabChange('messages'); }} title="Message"><MessageCircle size={17}/></button></article>)}</div>}
       {!peopleBusy && people.length === 0 && <div className="scnf-empty">No members found. Try another name or username.</div>}
     </section>;
 
@@ -231,7 +232,7 @@ export default function ScnPostFeatures({ activeTab, onClose, user, profile, pos
   };
 
   return <div className="scnf-workspace">
-    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { if (tab.id === 'messages') { setSelectedPerson(null); void searchPeople(); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
+    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') void searchPeople(); setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
     <main className="scnf-main">{renderBody()}</main>
   </div>;
 }
