@@ -67,3 +67,17 @@ The linked Vercel project uses the Next.js framework preset, automatic Next.js o
 ## Verification and deployment status
 
 This branch contains the expanded feature implementation. The independent GitHub Actions production build and TypeScript validation passed on commit `69989896b8fa8add9bd360c8e944753e2bcd24e4`. Vercel's deployment status remains blocked by the account's build-rate limit, so this branch has **not** been production-deployed. Apply migrations only after reviewing them against the live SCN schema, then exercise the flows with real SCN accounts before merging or deploying.
+
+
+## Gamewave home discovery and ecosystem stories
+
+The Home feed aggregates Google News RSS results and optional publisher/blog RSS feeds. Configure `GAMEWAVE_BLOG_RSS_URLS` as a comma-separated list of HTTPS RSS or Atom feed URLs to add blog sources. The public `/api/discovery` route returns short summaries, publisher attribution, timestamps, and links to the original articles; Gamewave does not republish full articles.
+
+Cross-application Stories are intentionally opt-in. Configure:
+
+- `KUS_ECOSYSTEM_STORIES_URL`: HTTPS endpoint returning either an array or `{ "stories": [...] }`. Each story should include `id`, `title`, `image_url` (or `imageUrl`), `url` (deep link), and `source` / `app_name`. Optional `creator` is supported.
+- `KUS_ECOSYSTEM_API_KEY`: optional bearer credential for the authenticated story endpoint.
+
+The Gamewave adapter only displays stories with HTTPS media and destination URLs. Until the KUS ecosystem story service is configured, the Stories rail displays Gamewave's own recent image posts and an honest connection placeholder; it does not fabricate cross-app activity.
+
+The interface defaults to light mode and remembers the user's theme choice in the browser. The wine-red header, white feed, dark mode, liquid-glass pill navigation, adaptive foreground contrast, central Create entry, and profile shortcut are all presentation-layer features.
