@@ -50,6 +50,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [profileBusy, setProfileBusy] = useState(false);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [reposted, setReposted] = useState<Set<string>>(new Set());
+  const [viewedReels, setViewedReels] = useState<Set<string>>(new Set());
   const [reelIndex, setReelIndex] = useState(0);
   const [noticeFilter, setNoticeFilter] = useState<'all' | 'unread'>('all');
   const [chatAllowed, setChatAllowed] = useState<boolean | null>(null);
@@ -202,6 +203,8 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     else toast.success(wasReposted ? 'Repost removed' : 'Added to your reposts');
   };
 
+  const recordReelView = async (post: ScnPost) => { if (!supabase || viewedReels.has(post.id)) return; setViewedReels(old => new Set(old).add(post.id)); const { error } = await supabase.rpc('bump_feed_post_view_count', { p_id: post.id }); if (error) console.warn('Reel view count was not recorded:', error.message); };
+
   const sharePost = async (post: ScnPost) => {
     const url = window.location.origin + '/?post=' + post.id;
     try { if (navigator.share) await navigator.share({ title: 'SCN Post', text: post.content || 'See this post', url }); else { await navigator.clipboard.writeText(url); toast.success('Link copied'); } }
@@ -218,7 +221,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
 
     if (activeTab === 'reels') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">SHORT-FORM VIDEO</span><h2>Reels</h2><p>Discover video posts from across the SCN community.</p></div><button className="scnf-gold-button" onClick={onCreatePost}><Plus size={16}/> Create video</button></div>
-      {reels.length === 0 ? <div className="scnf-empty"><Film size={30}/><b>No reels yet</b><p>Video posts published to the shared SCN feed will appear here.</p><button className="scnf-gold-button" onClick={onCreatePost}>Upload a video</button></div> : <div className="scnf-reels-layout"><div className="scnf-reel-stage"><div className="scnf-reel-video-wrap"><video key={reels[reelIndex]?.id} src={reels[reelIndex]?.media_url || ''} controls playsInline autoPlay muted loop className="scnf-reel-video"/><div className="scnf-reel-overlay"><span>{reels[reelIndex]?.user_name}</span><p>{reels[reelIndex]?.content}</p></div></div><div className="scnf-reel-actions"><button onClick={() => void toggleLike(reels[reelIndex])} className={liked.has(reels[reelIndex]?.id) ? 'active' : ''}><Heart size={19}/>Like</button><button onClick={() => void toggleRepost(reels[reelIndex])} className={reposted.has(reels[reelIndex]?.id) ? 'active' : ''}><Share2 size={19}/>Repost</button><button onClick={() => void sharePost(reels[reelIndex])}><Send size={19}/>Share</button></div></div><div className="scnf-reel-rail">{reels.map((reel, index) => <button key={reel.id} className={index === reelIndex ? 'selected' : ''} onClick={() => setReelIndex(index)}><span>{index + 1}</span><div><b>{reel.user_name}</b><small>{reel.content || 'Video post'}</small></div></button>)}</div></div>}
+      {reels.length === 0 ? <div className="scnf-empty"><Film size={30}/><b>No reels yet</b><p>Video posts published to the shared SCN feed will appear here.</p><button className="scnf-gold-button" onClick={onCreatePost}>Upload a video</button></div> : <div className="scnf-reels-layout"><div className="scnf-reel-stage"><div className="scnf-reel-video-wrap"><video key={reels[reelIndex]?.id} src={reels[reelIndex]?.media_url || ''} controls playsInline autoPlay muted loop className="scnf-reel-video" onPlay={() => void recordReelView(reels[reelIndex])}/><div className="scnf-reel-overlay"><span>{reels[reelIndex]?.user_name}</span><p>{reels[reelIndex]?.content}</p></div></div><div className="scnf-reel-actions"><button onClick={() => void toggleLike(reels[reelIndex])} className={liked.has(reels[reelIndex]?.id) ? 'active' : ''}><Heart size={19}/>Like</button><button onClick={() => void toggleRepost(reels[reelIndex])} className={reposted.has(reels[reelIndex]?.id) ? 'active' : ''}><Share2 size={19}/>Repost</button><button onClick={() => void sharePost(reels[reelIndex])}><Send size={19}/>Share</button></div></div><div className="scnf-reel-rail">{reels.map((reel, index) => <button key={reel.id} className={index === reelIndex ? 'selected' : ''} onClick={() => setReelIndex(index)}><span>{index + 1}</span><div><b>{reel.user_name}</b><small>{reel.content || 'Video post'}</small></div></button>)}</div></div>}
     </section>;
 
     if (activeTab === 'messages') return <section className="scnf-panel scnf-messages-panel">
@@ -243,9 +246,9 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
 
     return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">CREATOR WORKSPACE</span><h2>Creator studio</h2><p>A live snapshot of content published through your shared SCN identity.</p></div><button className="scnf-gold-button" onClick={onCreatePost}><Plus size={16}/> Publish</button></div>
-      <div className="scnf-metric-grid"><article><span>Published posts</span><b>{myPosts.length}</b><small>Across all formats</small></article><article><span>Total likes</span><b>{myPosts.reduce((sum, post) => sum + Number(post.likes || 0), 0)}</b><small>On your posts</small></article><article><span>Comments</span><b>{myPosts.reduce((sum, post) => sum + Number(post.comments_count || 0), 0)}</b><small>Community responses</small></article><article><span>Reposts</span><b>{myPosts.reduce((sum, post) => sum + Number(post.reposts || 0), 0)}</b><small>Shared onward</small></article></div>
+      <div className="scnf-metric-grid"><article><span>Published posts</span><b>{myPosts.length}</b><small>Across all formats</small></article><article><span>Total likes</span><b>{myPosts.reduce((sum, post) => sum + Number(post.likes || 0), 0)}</b><small>On your posts</small></article><article><span>Comments</span><b>{myPosts.reduce((sum, post) => sum + Number(post.comments_count || 0), 0)}</b><small>Community responses</small></article><article><span>Reposts</span><b>{myPosts.reduce((sum, post) => sum + Number(post.reposts || 0), 0)}</b><small>Shared onward</small></article><article><span>Video views</span><b>{myPosts.reduce((sum, post) => sum + Number(post.view_count || 0), 0)}</b><small>Recorded views</small></article><article><span>Audio listens</span><b>{myPosts.reduce((sum, post) => sum + Number(post.listen_count || 0), 0)}</b><small>Recorded listens</small></article></div>
       <div className="scnf-section-title">Your content</div><div className="scnf-creator-list">{myPosts.map(post => <article key={post.id}><span className="scnf-content-type">{post.post_type}</span><div><b>{post.title || post.content || 'Untitled post'}</b><small>{ago(post.created_at)}</small></div><span>{post.likes} ♥</span><span>{post.comments_count} comments</span></article>)}</div>
-      <div className="scnf-info-note">Reach and audience analytics will appear when the SCN view-count and audience reporting data are connected. This dashboard currently reports only fields available on your published posts.</div>
+      <div className="scnf-info-note">These totals use the existing SCN feed counters. Audience retention, follower growth, campaign attribution and revenue analytics are not yet available in this companion.</div>
     </section>;
   };
 
