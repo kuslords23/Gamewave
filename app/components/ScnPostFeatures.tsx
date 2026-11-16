@@ -461,7 +461,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   };
 
   return <div className="scnf-workspace">
-    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={(tab.id === 'messages' ? activeTab === 'messages' || activeTab === 'notifications' : activeTab === tab.id) ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
+    <header className="scnf-topbar"><div><span className="scnf-brand-dot">G</span><div><b>GAMEWAVE</b><small>YOUR SOCIAL WORLD</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={(tab.id === 'messages' ? activeTab === 'messages' || activeTab === 'notifications' : activeTab === tab.id) ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
     <main className="scnf-main">{renderBody()}</main>
   </div>;
 }
