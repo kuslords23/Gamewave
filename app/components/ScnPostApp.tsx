@@ -1,7 +1,7 @@
 'use client';
 import React,{FormEvent,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {AnimatePresence,motion} from 'framer-motion';
-import {ArrowUpRight,BarChart3,Bell,Bookmark,Clapperboard,Compass,Film,Heart,Home,ImagePlus,Inbox,LogOut,MessageCircle,MoreHorizontal,Music2,Newspaper,Plus,Search,Send,Share2,Sparkles,Sun,Moon,Users,UserRound,X} from 'lucide-react';
+import {ArrowUpRight,BarChart3,Bell,Bookmark,Clapperboard,Compass,Film,Heart,Home,ImagePlus,Inbox,LogOut,MessageCircle,MoreHorizontal,Music2,Newspaper,Plus,Search,Send,Share2,Sparkles,Sun,Moon,Users,UserRound,X,Settings} from 'lucide-react';
 import {Toaster,toast} from 'sonner';
 import type {Session,User} from '@supabase/supabase-js';
 import {supabase,isSupabaseConfigured} from '../lib/supabase';
@@ -9,7 +9,7 @@ import type {ScnPost,ScnComment,PostType} from '../lib/feedTypes';
 import FeedPostText from './feed/FeedPostText';
 import ScnPostFeatures from './ScnPostFeatures';
 type Tab='home'|'following'|'explore';
-type FeatureTab='friends'|'reels'|'messages'|'communities'|'notifications'|'profile'|'creator'|'royal';
+type FeatureTab='friends'|'reels'|'messages'|'communities'|'notifications'|'profile'|'creator'|'royal'|'settings';
 type Profile={id:string;name:string;avatar?:string;username?:string};
 type DiscoveryItem={id:string;title:string;url:string;source:string;summary:string;publishedAt?:string;kind:'news'|'blog'};
 type EcosystemStory={id:string;title:string;imageUrl:string;url:string;source:string;creator?:string};
@@ -60,7 +60,7 @@ export default function ScnPostApp(){
   <header className="gw-header">
    <button className="gw-profile-button" onClick={()=>setFeatureTab('profile')} aria-label="Open profile"><Avatar name={name} src={avatar}/></button>
    <div className="gw-brand"><span className="gw-brand-mark">G</span><div><b>GAMEWAVE</b><small>YOUR SOCIAL WORLD</small></div></div>
-   <div className="gw-header-actions"><div className="gw-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search Gamewave"/></div><button className="gw-theme-toggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} aria-label={theme==='light'?'Switch to dark mode':'Switch to light mode'}>{theme==='light'?<Moon size={18}/>:<Sun size={18}/>}</button><button className="gw-signout" onClick={signOut} aria-label="Sign out"><LogOut size={17}/></button></div>
+   <div className="gw-header-actions"><div className="gw-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search Gamewave"/></div><button className="gw-theme-toggle" onClick={()=>setFeatureTab('settings')} aria-label="Open settings" title="Settings"><Settings size={18}/></button><button className="gw-theme-toggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} aria-label={theme==='light'?'Switch to dark mode':'Switch to light mode'}>{theme==='light'?<Moon size={18}/>:<Sun size={18}/>}</button><button className="gw-signout" onClick={signOut} aria-label="Sign out"><LogOut size={17}/></button></div>
   </header>
   {featureTab&&<ScnPostFeatures activeTab={featureTab} onTabChange={setFeatureTab} onClose={()=>setFeatureTab(null)} user={user} profile={profile} posts={posts} onCreatePost={()=>{setFeatureTab(null);setComposer(true);}}/>}
   <main className="gw-main">
