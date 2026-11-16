@@ -19,7 +19,10 @@ function tag(xml: string, name: string) {
   return match?.[1] ? decode(match[1]) : '';
 }
 function parseFeed(xml: string, kind: FeedKind): FeedItem[] {
-  const blocks = [...xml.matchAll(/<(item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gi)].map(m => m[2]);
+  const blocks: string[] = [];
+  const itemPattern = /<(item|entry)(?:\\s[^>]*)?>([\\s\\S]*?)<\\/\\1>/gi;
+  let itemMatch: RegExpExecArray | null;
+  while ((itemMatch = itemPattern.exec(xml)) !== null) blocks.push(itemMatch[2]);
   return blocks.map((block, index) => {
     const linkTag = block.match(/<link(?:\s[^>]*?)?\s+href=["']([^"']+)["'][^>]*\/?\s*>/i);
     const url = tag(block, 'link') || linkTag?.[1] || '';
