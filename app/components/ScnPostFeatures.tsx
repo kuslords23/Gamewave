@@ -11,7 +11,7 @@ import './ScnPostFeatures.css';
 type FeatureTab = 'friends' | 'reels' | 'messages' | 'notifications' | 'profile' | 'creator';
 type Profile = { id: string; name: string; username?: string; avatar?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
-type ChatMessage = { id: string; thread_id: string; sender_id: string | null; sender_name: string; sender_avatar: string | null; content: string | null; created_at: string };
+type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
 type Notice = { id: string; title: string; body: string | null; category: string | null; read: boolean; created_at: string; metadata?: Record<string, unknown> };
 
 const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
@@ -30,7 +30,7 @@ function ago(value: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
   return minutes < 1 ? 'Just now' : minutes < 60 ? minutes + 'm ago' : minutes < 1440 ? Math.floor(minutes / 60) + 'h ago' : Math.floor(minutes / 1440) + 'd ago';
 }
-function threadId(a: string, b: string) { return [a, b].sort().join(':'); }
+function conversationId(a: string, b: string) { const pair = [a, b].sort(); const ah = pair[0].replace(/-/g, ''); const bh = pair[1].replace(/-/g, ''); const mix = Array.from({ length: 32 }, (_, i) => { const av = parseInt(ah[i % ah.length] || '0', 16); const bv = parseInt(bh[i % bh.length] || '0', 16); return ((av ^ bv) % 16).toString(16); }).join(''); return mix.slice(0, 8) + '-' + mix.slice(8, 12) + '-4' + mix.slice(12, 15) + '-8' + mix.slice(15, 18) + '-' + mix.slice(18, 30); }
 
 export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user, profile, posts, onCreatePost }: {
   activeTab: FeatureTab; onTabChange: (tab: FeatureTab) => void; onClose: () => void; user: User; profile: Profile | null; posts: ScnPost[]; onCreatePost: () => void;
@@ -52,6 +52,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [reposted, setReposted] = useState<Set<string>>(new Set());
   const [reelIndex, setReelIndex] = useState(0);
   const [noticeFilter, setNoticeFilter] = useState<'all' | 'unread'>('all');
+  const [chatAllowed, setChatAllowed] = useState<boolean | null>(null);
 
   const currentName = profile?.name || String(user.user_metadata?.name || user.email?.split('@')[0] || 'SCN member');
   const currentAvatar = profile?.avatar || String(user.user_metadata?.avatar || '👑');
@@ -98,8 +99,8 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
 
   const loadMessages = useCallback(async (person: Person) => {
     if (!supabase) return;
-    const id = threadId(user.id, person.id);
-    const { data, error } = await supabase.from('chat_messages').select('id,thread_id,sender_id,sender_name,sender_avatar,content,created_at').eq('thread_id', id).eq('thread_type', 'dm').order('created_at', { ascending: true }).limit(200);
+    const id = conversationId(user.id, person.id);
+    const { data, error } = await supabase.from('chat_messages').select('id,conversation_id,sender_id,content,message,created_at').eq('conversation_id', id).order('created_at', { ascending: true }).limit(200);
     if (error) { toast.error('Could not load conversation: ' + error.message); return; }
     setMessages((data || []) as ChatMessage[]);
   }, [user.id]);
@@ -111,8 +112,8 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   useEffect(() => { if (activeTab === 'messages' && selectedPerson) void loadMessages(selectedPerson); }, [activeTab, selectedPerson, loadMessages]);
   useEffect(() => {
     if (!supabase || activeTab !== 'messages' || !selectedPerson) return;
-    const id = threadId(user.id, selectedPerson.id);
-    const channel = supabase.channel('scn-post-dm-' + id).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'thread_id=eq.' + id }, payload => {
+    const id = conversationId(user.id, selectedPerson.id);
+    const channel = supabase.channel('scn-post-dm-' + id).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'conversation_id=eq.' + id }, payload => {
       const row = payload.new as ChatMessage;
       setMessages(old => old.some(item => item.id === row.id) ? old : [...old, row]);
     }).subscribe();
@@ -124,12 +125,19 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     if (!supabase || !selectedPerson || !messageDraft.trim()) return;
     setMessageBusy(true);
     const content = messageDraft.trim();
-    const { error } = await supabase.from('chat_messages').insert({
-      thread_id: threadId(user.id, selectedPerson.id), thread_type: 'dm', sender_id: user.id,
-      sender_name: currentName, sender_avatar: currentAvatar, message_type: 'text', content,
-    });
+    const cid = conversationId(user.id, selectedPerson.id);
+    const [mutual, accepted] = await Promise.all([
+      supabase.from('follows').select('follower_id').eq('target_type', 'user').or('and(follower_id.eq.' + user.id + ',target_id.eq.' + selectedPerson.id + '),and(follower_id.eq.' + selectedPerson.id + ',target_id.eq.' + user.id + ')'),
+      supabase.from('chat_requests').select('id').eq('status', 'accepted').or('and(from_user_id.eq.' + user.id + ',to_user_id.eq.' + selectedPerson.id + '),and(from_user_id.eq.' + selectedPerson.id + ',to_user_id.eq.' + user.id + ')').limit(1),
+    ]);
+    const mutualRows = mutual.data || [];
+    const hasMutualFollow = mutualRows.some(row => String(row.follower_id) === user.id) && mutualRows.some(row => String(row.follower_id) === selectedPerson.id);
+    if (!hasMutualFollow && !(accepted.data || []).length) { setChatAllowed(false); toast.error('Direct messaging opens after a mutual follow or an accepted chat request.'); setMessageBusy(false); return; }
+    const membership = await supabase.from('conversation_members').upsert({ conversation_id: cid, user_id: user.id }, { onConflict: 'conversation_id,user_id' });
+    if (membership.error) { toast.error(membership.error.message); setMessageBusy(false); return; }
+    const { error } = await supabase.from('chat_messages').insert({ conversation_id: cid, sender_id: user.id, content, message: content, read: false });
     if (error) toast.error(error.message);
-    else { setMessageDraft(''); }
+    else { setMessageDraft(''); setChatAllowed(true); }
     setMessageBusy(false);
     if (!error) await loadMessages(selectedPerson);
   };
@@ -194,7 +202,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     if (activeTab === 'friends') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR PEOPLE</span><h2>Find your circle</h2><p>Discover SCN members and build your following.</p></div><span className="scnf-count">{following.size} following</span></div>
       <div className="scnf-search"><Search size={18}/><input value={peopleQuery} onChange={e => setPeopleQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="Search by name or username"/><button onClick={() => void searchPeople()}>Search</button></div>
-      {peopleBusy ? <p className="scnf-muted">Finding members…</p> : <div className="scnf-people-grid">{people.map(person => <article className="scnf-person" key={person.id}><Avatar name={person.name} src={person.avatar}/><div className="scnf-person-copy"><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'scn-member'}</small></div><button className={following.has(person.id) ? 'scnf-follow is-following' : 'scnf-follow'} onClick={() => void toggleFollow(person)}>{following.has(person.id) ? <Check size={15}/> : <UserPlus size={15}/>} {following.has(person.id) ? 'Following' : 'Follow'}</button><button className="scnf-message-shortcut" onClick={() => { setSelectedPerson(person); onTabChange('messages'); }} title="Message"><MessageCircle size={17}/></button></article>)}</div>}
+      {peopleBusy ? <p className="scnf-muted">Finding members…</p> : <div className="scnf-people-grid">{people.map(person => <article className="scnf-person" key={person.id}><Avatar name={person.name} src={person.avatar}/><div className="scnf-person-copy"><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'scn-member'}</small></div><button className={following.has(person.id) ? 'scnf-follow is-following' : 'scnf-follow'} onClick={() => void toggleFollow(person)}>{following.has(person.id) ? <Check size={15}/> : <UserPlus size={15}/>} {following.has(person.id) ? 'Following' : 'Follow'}</button><button className="scnf-message-shortcut" onClick={() => { setSelectedPerson(person); onTabChange('messages'); setChatAllowed(null); }} title="Message"><MessageCircle size={17}/></button></article>)}</div>}
       {!peopleBusy && people.length === 0 && <div className="scnf-empty">No members found. Try another name or username.</div>}
     </section>;
 
@@ -206,7 +214,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     if (activeTab === 'messages') return <section className="scnf-panel scnf-messages-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">PRIVATE CONVERSATIONS</span><h2>Messages</h2><p>Direct messages use the existing SCN chat message store.</p></div></div>
       <div className="scnf-chat-layout"><aside className="scnf-chat-people"><div className="scnf-chat-section-title">Start a conversation</div>{people.slice(0, 24).map(person => <button key={person.id} className={selectedPerson?.id === person.id ? 'selected' : ''} onClick={() => setSelectedPerson(person)}><Avatar name={person.name} src={person.avatar}/><span><b>{person.name}</b><small>@{person.username.replace(/^@/, '') || 'member'}</small></span></button>)}{people.length === 0 && <p className="scnf-muted">Search for people in Friends first.</p>}</aside>
-      <div className="scnf-chat-thread">{selectedPerson ? <><header><Avatar name={selectedPerson.name} src={selectedPerson.avatar}/><div><b>{selectedPerson.name}</b><small>SCN member</small></div></header><div className="scnf-chat-messages">{messages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'scnf-chat-bubble mine' : 'scnf-chat-bubble'}><p>{message.content}</p><small>{ago(message.created_at)}</small></div>)}{messages.length === 0 && <div className="scnf-empty">Start the conversation with {selectedPerson.name}.</div>}</div><form className="scnf-chat-compose" onSubmit={sendMessage}><input value={messageDraft} onChange={e => setMessageDraft(e.target.value)} placeholder="Write a message…"/><button disabled={messageBusy || !messageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><MessageCircle size={28}/><b>Choose someone to message</b><p>Select a member from the list to open a direct conversation.</p></div>}</div></div>
+      <div className="scnf-chat-thread">{selectedPerson ? <><header><Avatar name={selectedPerson.name} src={selectedPerson.avatar}/><div><b>{selectedPerson.name}</b><small>SCN member</small></div></header><div className="scnf-chat-messages">{messages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'scnf-chat-bubble mine' : 'scnf-chat-bubble'}><p>{message.content || message.message}</p><small>{ago(message.created_at)}</small></div>)}{messages.length === 0 && <div className="scnf-empty">Start the conversation with {selectedPerson.name}.</div>}</div>{chatAllowed === false && <div className="scnf-chat-access-note">Direct messages require a mutual follow or an accepted SCN chat request. Follow each other first, or accept the request in SCN Chat.</div>}<form className="scnf-chat-compose" onSubmit={sendMessage}><input value={messageDraft} onChange={e => setMessageDraft(e.target.value)} placeholder="Write a message…"/><button disabled={messageBusy || !messageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><MessageCircle size={28}/><b>Choose someone to message</b><p>Select a member from the list to open a direct conversation.</p></div>}</div></div>
     </section>;
 
     if (activeTab === 'notifications') return <section className="scnf-panel">
@@ -232,7 +240,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   };
 
   return <div className="scnf-workspace">
-    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') void searchPeople(); setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
+    <header className="scnf-topbar"><div><span className="scnf-brand-dot">S</span><div><b>SCN POST</b><small>YOUR SOCIAL SPACE</small></div></div><nav>{tabs.map(tab => { const Icon = tab.icon; return <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { onTabChange(tab.id); if (tab.id === 'messages') { void searchPeople(); setChatAllowed(null); } setReelIndex(0); }} data-tab={tab.id}><Icon size={17}/><span>{tab.label}</span></button>; })}</nav><button className="scnf-close" onClick={onClose} aria-label="Back to feed"><X size={18}/></button></header>
     <main className="scnf-main">{renderBody()}</main>
   </div>;
 }
