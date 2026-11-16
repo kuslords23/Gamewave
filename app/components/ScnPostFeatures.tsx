@@ -1,18 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Bell, BarChart3, Check, Compass, Film, Heart, MessageCircle, Plus, Search, Send, Share2, UserPlus, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Bell, BarChart3, Check, Compass, Crown, Film, Heart, MessageCircle, Plus, Search, Send, Share2, UserPlus, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { ScnPost } from '../lib/feedTypes';
 import './ScnPostFeatures.css';
 
-type FeatureTab = 'friends' | 'reels' | 'messages' | 'notifications' | 'profile' | 'creator';
+type FeatureTab = 'friends' | 'reels' | 'messages' | 'notifications' | 'profile' | 'creator' | 'royal';
 type Profile = { id: string; name: string; username?: string; avatar?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
 type Notice = { id: string; title: string; body: string | null; category: string | null; read: boolean; created_at: string; metadata?: Record<string, unknown> };
+type RoyalTurn = { role: 'user' | 'assistant'; content: string };
 
 const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
   { id: 'friends', label: 'Friends', icon: Users },
@@ -21,6 +22,7 @@ const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'profile', label: 'My profile', icon: Compass },
   { id: 'creator', label: 'Creator studio', icon: BarChart3 },
+  { id: 'royal', label: 'Royal', icon: Crown },
 ];
 
 function Avatar({ name, src }: { name: string; src?: string | null }) {
@@ -54,6 +56,12 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [reelIndex, setReelIndex] = useState(0);
   const [noticeFilter, setNoticeFilter] = useState<'all' | 'unread'>('all');
   const [chatAllowed, setChatAllowed] = useState<boolean | null>(null);
+  const [royalTurns, setRoyalTurns] = useState<RoyalTurn[]>([]);
+  const [royalPrompt, setRoyalPrompt] = useState('');
+  const [royalStreaming, setRoyalStreaming] = useState('');
+  const [royalBusy, setRoyalBusy] = useState(false);
+  const [royalError, setRoyalError] = useState('');
+  const royalAbort = useRef<AbortController | null>(null);
 
   const currentName = profile?.name || String(user.user_metadata?.name || user.email?.split('@')[0] || 'SCN member');
   const currentAvatar = profile?.avatar || String(user.user_metadata?.avatar || '👑');
@@ -212,7 +220,89 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     catch (error) { if (!(error instanceof Error && error.name === 'AbortError')) toast.error('Could not share post'); }
   };
 
+  const sendRoyal = async (event: FormEvent) => {
+    event.preventDefault();
+    const prompt = royalPrompt.trim();
+    if (!prompt || royalBusy || !supabase) return;
+    setRoyalTurns(old => [...old, { role: 'user', content: prompt }]);
+    setRoyalPrompt('');
+    setRoyalError('');
+    setRoyalStreaming('');
+    setRoyalBusy(true);
+    const controller = new AbortController();
+    royalAbort.current = controller;
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (session.error || !token) throw new Error('Your SCN session has expired. Sign in again.');
+      const response = await fetch('/api/royal/companion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-supabase-auth': token, 'Accept': 'text/event-stream, application/json' },
+        body: JSON.stringify({ conversationId: 'scn-post', prompt, history: royalTurns.slice(-12), mode: 'royal' }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string; message?: string };
+        throw new Error(body.error || body.message || 'Royal could not respond (' + response.status + ').');
+      }
+      const contentType = response.headers.get('content-type') || '';
+      let answer = '';
+      if (contentType.includes('text/event-stream') && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let eventName = 'message';
+        const processBlock = (block: string) => {
+          const dataLines: string[] = [];
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) eventName = line.slice(6).trim();
+            else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+          }
+          if (!dataLines.length) return;
+          let data: Record<string, unknown>;
+          try { data = JSON.parse(dataLines.join('\n')) as Record<string, unknown>; } catch { eventName = 'message'; return; }
+          if (eventName === 'token' && typeof data.text === 'string') {
+            answer += data.text;
+            setRoyalStreaming(answer);
+          }
+          if (eventName === 'done' && typeof data.answer === 'string') answer = data.answer;
+          if (eventName === 'error') throw new Error(typeof data.error === 'string' ? data.error : 'Royal stream failed.');
+          eventName = 'message';
+        };
+        for (;;) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          buffer += decoder.decode(chunk.value, { stream: true });
+          let boundary = buffer.indexOf('\n\n');
+          while (boundary >= 0) { processBlock(buffer.slice(0, boundary)); buffer = buffer.slice(boundary + 2); boundary = buffer.indexOf('\n\n'); }
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) processBlock(buffer);
+      } else {
+        const body = await response.json() as Record<string, unknown>;
+        answer = typeof body.answer === 'string' ? body.answer : typeof body.content === 'string' ? body.content : '';
+      }
+      if (!answer.trim()) throw new Error('Royal returned an empty response.');
+      setRoyalTurns(old => [...old, { role: 'assistant', content: answer.trim() }]);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) setRoyalError(error instanceof Error ? error.message : 'Royal is temporarily unavailable.');
+    } finally {
+      royalAbort.current = null;
+      setRoyalBusy(false);
+      setRoyalStreaming('');
+    }
+  };
+
   const renderBody = () => {
+    if (activeTab === 'royal') return <section className="scnf-panel scnf-royal-panel">
+      <div className="scnf-panel-head"><div><span className="scnf-kicker">SHARED KUS INTELLIGENCE</span><h2>Royal</h2><p>Your SCN Post companion, connected to the shared Royal runtime.</p></div><span className="scnf-royal-status"><i/> KUS Core · Guardian boundaries</span></div>
+      <div className="scnf-royal-welcome"><span className="scnf-royal-mark">♛</span><div><b>What are we building today?</b><p>Ask Royal to help with social strategy, creator workflows, content ideas, community discovery or your next post.</p></div></div>
+      {royalTurns.length === 0 && <div className="scnf-royal-starters">{['Help me plan a week of posts for my audience','Turn this idea into a strong social post','How can I grow a creator community on SCN?'].map(item => <button key={item} onClick={() => setRoyalPrompt(item)}>{item}</button>)}</div>}
+      <div className="scnf-royal-transcript">{royalTurns.map((turn, index) => <article key={index} className={'scnf-royal-turn '+turn.role}><small>{turn.role === 'assistant' ? '♛ Royal' : 'You'}</small><p>{turn.content}</p></article>)}{royalStreaming && <article className="scnf-royal-turn assistant"><small>♛ Royal · responding</small><p>{royalStreaming}</p></article>}{royalError && <div className="scnf-royal-error">{royalError}</div>}</div>
+      <form className="scnf-royal-compose" onSubmit={sendRoyal}><textarea value={royalPrompt} onChange={e => setRoyalPrompt(e.target.value)} rows={2} placeholder="Message Royal about your social world…" disabled={royalBusy}/>{royalBusy ? <button type="button" onClick={() => royalAbort.current?.abort()}>Stop</button> : <button type="submit" disabled={!royalPrompt.trim()}><Send size={17}/> Send</button>}</form>
+      <p className="scnf-royal-footnote">Royal uses the shared KUS intelligence gateway. It does not bypass Guardian approval for protected actions.</p>
+    </section>;
+
     if (activeTab === 'friends') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR PEOPLE</span><h2>Find your circle</h2><p>Discover SCN members and build your following.</p></div><span className="scnf-count">{following.size} following</span></div>
       <div className="scnf-search"><Search size={18}/><input value={peopleQuery} onChange={e => setPeopleQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="Search by name or username"/><button onClick={() => void searchPeople()}>Search</button></div>
