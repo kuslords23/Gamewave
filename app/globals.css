@@ -129,3 +129,17 @@ body:has(.gw-app){height:100%;overflow:hidden}
   .gw-nav-pill.create-pill{height:39px}
   .gw-royal-fab{bottom:calc(68px + env(safe-area-inset-bottom));min-height:38px}
 }
+
+
+/* Keep the Gamewave header anchored below the device status/notch area. The feed scrolls independently beneath it. */
+.gw-header{
+  position:sticky;
+  top:0;
+  z-index:60;
+  flex:0 0 auto;
+  align-self:stretch;
+  padding-top:calc(9px + env(safe-area-inset-top));
+}
+@media(max-width:650px){
+  .gw-header{padding:calc(7px + env(safe-area-inset-top)) 10px 7px;}
+}
