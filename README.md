@@ -1,28 +1,34 @@
 # SCN Post
+Dedicated social publishing and community companion for Sport-Clan-Nexus.
 
-SCN Post is the social publishing and community companion in the Sport-Clan-Nexus (SCN) ecosystem.
+## First port
+- Reads and writes the existing shared \`public.feed_posts\` table. No duplicate posts dataset.
+- Uses SCN's existing \`kus-images\`, \`kus-videos\`, and \`kus-music\` storage buckets.
+- Shares the hub auth storage key \`kus-lords-auth\`.
+- Supports text, image, video, audio, and external-link posts.
+- Preserves SCN hashtag and mention rendering.
+- Derives Stories from image posts in the existing 24-hour window.
+- Uses existing \`feed_comments\` and \`follows\` tables, including threaded replies and realtime comment updates.
+- Adds per-user Likes and Saved records additively. Like counts increment/decrement the existing \`feed_posts.likes\` field without resetting legacy totals.
 
-This repository is a clean restart. The previous Gamewave implementation has been archived on the `gamewave-archive-before-scn-post` branch. No Gamewave application code is carried into this baseline.
+## Shared backend rules
+Do not create a second posts table, user identity, or social graph. Do not copy posts into a new dataset. Both SCN surfaces must read the same records.
 
-## Product direction
+Set \`NEXT_PUBLIC_SUPABASE_URL\` and \`NEXT_PUBLIC_SUPABASE_ANON_KEY\` to the same values used by the SCN hub. No credentials are committed.
 
-Build a mobile-first, desktop-capable social publishing experience informed by focused research into Facebook, Instagram, and X. The product will unify posts, timelines, media publishing, social interactions, discovery, stories, short-form video, communities, creator tools, notifications, and privacy controls.
+## Local development
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
 
-## Architecture principles
+The existing SCN Supabase project must contain \`feed_posts\`, \`feed_comments\`, \`follows\`, public media buckets, and threaded comment columns from the hub migration 027. Apply \`supabase/migrations/052_scn_post_social_interactions.sql\` to that same project before using Likes and Saved.
 
-- Reuse SCN authentication, social data, media storage, notifications, and existing backend services.
-- Keep posts and interactions interoperable with existing SCN surfaces. Do not create a duplicate social graph or publishing backend.
-- Integrate the shared Royal intelligence runtime through KUS AI. Do not create a separate chatbot or model-routing stack.
-- Preserve authenticated permissions and Guardian controls for actions that affect accounts or publish content.
-- Audit existing SCN capabilities before rebuilding them.
-- Keep implementation lean and verify each integration against the live repository and backend.
-
-## Current status
-
-- [x] Original Gamewave source preserved in the archive branch.
-- [x] Fresh SCN Post baseline established.
-- [ ] Repository and deployment configuration audit.
-- [ ] Existing SCN social backend audit.
-- [ ] Facebook, Instagram, and X product research.
-- [ ] SCN Post product and interaction specification.
-- [ ] UI implementation and integration.
+## Status
+- [x] Clean repository baseline.
+- [x] First port: shared feed contract, auth identity, publishing, media upload, Stories, comments, Following, Likes and Saved.
+- [ ] Verify shared environment variables and live schema/RLS.
+- [ ] Build/type-check and verify media upload permissions.
+- [ ] Port advanced editor, creator tools, richer share workflows, profiles, groups and notifications.
+- [ ] Integrate shared Royal runtime through KUS AI.
+- [ ] Complete competitor research and product QA.
