@@ -5,7 +5,10 @@ alter table public.feed_post_likes enable row level security;
 drop policy if exists "Anyone can read post likes" on public.feed_post_likes;
 create policy "Anyone can read post likes" on public.feed_post_likes for select using(true);
 drop policy if exists "Users manage own post likes" on public.feed_post_likes;
-create policy "Users manage own post likes" on public.feed_post_likes for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
+drop policy if exists "Users insert own post likes" on public.feed_post_likes;
+create policy "Users insert own post likes" on public.feed_post_likes for insert with check(auth.uid()=user_id);
+drop policy if exists "Users delete own post likes" on public.feed_post_likes;
+create policy "Users delete own post likes" on public.feed_post_likes for delete using(auth.uid()=user_id);
 create or replace function public.sync_feed_post_like_count() returns trigger language plpgsql security definer set search_path=public as $$
 begin
  if tg_op='INSERT' then update public.feed_posts set likes=coalesce(likes,0)+1 where id=new.post_id; return new;
