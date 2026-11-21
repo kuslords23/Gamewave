@@ -24,4 +24,4 @@ drop policy if exists "Users manage own post saves" on public.feed_post_saves;
 create policy "Users manage own post saves" on public.feed_post_saves for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
 grant select, insert, delete on public.feed_post_saves to authenticated;
 
-do $ begin alter publication supabase_realtime add table public.feed_post_likes; exception when duplicate_object then null; end $$;
+do $scn$ begin alter publication supabase_realtime add table public.feed_post_likes; exception when duplicate_object then null; end $scn$;
