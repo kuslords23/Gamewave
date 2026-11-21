@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, LoaderCircle, UserPlus, UserCheck } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { supabase } from '../../lib/supabase';
-import QuotedPostPreview from '../../components/QuotedPostPreview';
+import QuotedPostPreview from './QuotedPostPreview';
 
 type Member = { id: string; name: string; username: string | null; avatar: string | null };
 type MemberPost = { id: string; user_id: string; user_name: string; user_avatar: string | null; title: string | null; content: string | null; post_type: string; media_url: string | null; cover_url: string | null; quoted_post_id: string | null; likes: number; comments_count: number; reposts: number; created_at: string };
