@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, Heart, MessageCircle, Share2, Send, LoaderCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, MessageCircle, Share2, Send, LoaderCircle } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { supabase } from '../lib/supabase';
 import FeedPostText from './feed/FeedPostText';
-import type { ScnPost, ScnComment } from '../../lib/feedTypes';
+import type { ScnPost, ScnComment } from '../lib/feedTypes';
 
 const POST_COLUMNS = 'id,post_type,user_id,user_name,user_avatar,title,description,content,hashtags,media_url,media_mime,link_url,link_platform,cover_url,likes,comments_count,reposts,created_at,sound_title,sound_artist';
 
