@@ -27,5 +27,14 @@ export default function QuotedPostPreview({ postId }: { postId: string }) {
         <small>View original post <ArrowUpRight size={12}/></small>
       </Link>
       : <span className="quoted-post-missing">The original post is no longer available.</span>}
-  </div>;
+  </div>
+  <style jsx>{`
+    .quoted-post-preview{margin-top:14px;border:1px solid rgba(212,175,55,.25);border-radius:13px;background:rgba(255,255,255,.035);overflow:hidden}
+    .quoted-post-link{display:grid;gap:7px;padding:13px;color:inherit;text-decoration:none}
+    .quoted-post-author{display:flex;align-items:center;gap:7px;font-size:11px;color:#d8c4a0}
+    .quoted-post-copy{font-size:12px;line-height:1.55;color:#c8c8d1;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+    .quoted-post-link small{display:flex;align-items:center;gap:4px;color:#f1d88c;font-size:10px}
+    .quoted-post-media{font-size:10px;color:#aaaab7}
+    .quoted-post-missing,.quoted-post-loading{display:flex;align-items:center;gap:7px;padding:13px;font-size:11px;color:#aaaab7}
+  `}</style>;
 }
