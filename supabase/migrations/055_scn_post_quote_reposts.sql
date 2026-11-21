@@ -1,4 +1,6 @@
 -- Quote reposts are first-class feed posts that reference the canonical original post.
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
 alter table public.feed_posts
   add column if not exists quoted_post_id uuid null
   references public.feed_posts(id) on delete set null;
@@ -7,11 +9,11 @@ create index if not exists feed_posts_quoted_post_idx
   on public.feed_posts(quoted_post_id, created_at desc)
   where quoted_post_id is not null;
 
-create or replace function public.sync_scn_quote_repost()
+create or replace function private.sync_scn_quote_repost()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_author uuid;
@@ -56,10 +58,12 @@ begin
 end;
 $$;
 
+revoke all on function private.sync_scn_quote_repost() from public, anon, authenticated;
+
 drop trigger if exists tr_sync_scn_quote_repost on public.feed_posts;
 create trigger tr_sync_scn_quote_repost
   after insert or update of quoted_post_id or delete on public.feed_posts
-  for each row execute function public.sync_scn_quote_repost();
+  for each row execute function private.sync_scn_quote_repost();
 
 comment on column public.feed_posts.quoted_post_id is
   'References the canonical original post for a quote repost. Commentary remains in this feed_posts row.';
