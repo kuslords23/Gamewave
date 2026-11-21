@@ -6,9 +6,10 @@ import { ArrowLeft, ArrowUpRight, MessageCircle, Share2, Send, LoaderCircle } fr
 import { toast, Toaster } from 'sonner';
 import { supabase } from '../lib/supabase';
 import FeedPostText from './feed/FeedPostText';
+import QuotedPostPreview from './QuotedPostPreview';
 import type { ScnPost, ScnComment } from '../lib/feedTypes';
 
-const POST_COLUMNS = 'id,post_type,user_id,user_name,user_avatar,title,description,content,hashtags,media_url,media_mime,link_url,link_platform,cover_url,likes,comments_count,reposts,created_at,sound_title,sound_artist';
+const POST_COLUMNS = 'id,post_type,user_id,user_name,user_avatar,title,description,content,hashtags,media_url,media_mime,link_url,link_platform,cover_url,likes,comments_count,reposts,created_at,sound_title,sound_artist,quoted_post_id';
 
 function Avatar({ name, src }: { name: string; src?: string | null }) {
   return <span className="post-avatar">{src && (/^https?:|^\//.test(src)) ? <img src={src} alt="" /> : src || name.slice(0, 1).toUpperCase()}</span>;
@@ -118,9 +119,9 @@ export default function PostDetailPage() {
           : error ? <div className="post-detail-state"><b>Post unavailable</b><p>{error}</p><button onClick={() => router.push('/')}>Return to feed</button></div>
           : post && <>
             <article className="post-detail-card">
-              <div className="post-detail-author"><Avatar name={post.user_name} src={post.user_avatar}/><div><b>{post.user_name}</b><small>{new Date(post.created_at).toLocaleString()} · {post.post_type.replace('_', ' ')}</small></div></div>
+              <div className="post-detail-author"><Avatar name={post.user_name} src={post.user_avatar}/><div><b><a href={'/member/'+post.user_id}>{post.user_name}</a></b><small>{new Date(post.created_at).toLocaleString()} · {post.post_type.replace('_', ' ')}</small></div></div>
               {post.title && <h1>{post.title}</h1>}
-              {post.content && <div className="post-detail-copy"><FeedPostText text={post.content}/></div>}
+              {post.content && <div className="post-detail-copy"><FeedPostText text={post.content}/></div>}{post.quoted_post_id && <QuotedPostPreview postId={post.quoted_post_id}/ >}
               {mediaKind === 'image' && post.media_url && <img className="post-detail-media" src={post.media_url} alt={post.content || 'Post image'}/>}
               {mediaKind === 'video' && post.media_url && <video className="post-detail-media" src={post.media_url} poster={post.cover_url || undefined} controls playsInline preload="metadata"/>}
               {mediaKind === 'audio' && post.media_url && <div className="post-detail-audio"><b>{post.sound_title || post.title || 'Audio post'}</b><small>{post.sound_artist || post.user_name}</small><audio src={post.media_url} controls/></div>}
