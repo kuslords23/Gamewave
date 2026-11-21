@@ -40,19 +40,6 @@ begin
       set reposts = greatest(0, coalesce(reposts, 0) - 1)
       where id = old.quoted_post_id;
     return old;
-  elsif tg_op = 'UPDATE' and old.quoted_post_id is distinct from new.quoted_post_id then
-    if old.quoted_post_id is not null then
-      update public.feed_posts
-        set reposts = greatest(0, coalesce(reposts, 0) - 1)
-        where id = old.quoted_post_id;
-    end if;
-    if new.quoted_post_id is not null then
-      update public.feed_posts
-        set reposts = coalesce(reposts, 0) + 1
-        where id = new.quoted_post_id;
-    end if;
-    return new;
-  end if;
   if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
@@ -62,7 +49,7 @@ revoke all on function private.sync_scn_quote_repost() from public, anon, authen
 
 drop trigger if exists tr_sync_scn_quote_repost on public.feed_posts;
 create trigger tr_sync_scn_quote_repost
-  after insert or update of quoted_post_id or delete on public.feed_posts
+  after insert or delete on public.feed_posts
   for each row execute function private.sync_scn_quote_repost();
 
 comment on column public.feed_posts.quoted_post_id is
