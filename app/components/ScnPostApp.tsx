@@ -12,7 +12,7 @@ import FeedPostText from './feed/FeedPostText';
 import ScnPostFeatures from './ScnPostFeatures';
 type Tab='home'|'following'|'explore';
 type FeatureTab='friends'|'reels'|'messages'|'communities'|'notifications'|'profile'|'creator'|'royal'|'settings';
-type Profile={id:string;name:string;avatar?:string;username?:string};
+type Profile={id:string;name:string;avatar?:string;username?:string;bio?:string};
 type DiscoveryItem={id:string;title:string;url:string;source:string;summary:string;publishedAt?:string;kind:'news'|'blog'};
 type EcosystemStory={id:string;title:string;imageUrl:string;url:string;source:string;creator?:string};
 const COLS='id,post_type,user_id,user_name,user_avatar,title,description,content,hashtags,media_url,media_mime,storage_path,link_url,link_platform,embed_url,likes,comments_count,reposts,created_at,sound_source_post_id,sound_title,sound_artist,reply_to_post_id,reply_to_comment_id,cover_url,view_count,listen_count,quoted_post_id';
@@ -39,7 +39,7 @@ export default function ScnPostApp(){
  useEffect(()=>{if(file?.type.startsWith('video/')){const url=URL.createObjectURL(file);setVideoPreviewUrl(url);return()=>URL.revokeObjectURL(url);}setVideoPreviewUrl('');},[file]);
  useEffect(()=>{if(videoCover){const url=URL.createObjectURL(videoCover);setCoverPreviewUrl(url);return()=>URL.revokeObjectURL(url);}setCoverPreviewUrl('');},[videoCover]);
  const user=session?.user??null,name=profile?.name||(user?.user_metadata?.name as string)||user?.email?.split('@')[0]||'SCN member',avatar=profile?.avatar||(user?.user_metadata?.avatar as string)||'👑';
- const loadProfile=useCallback(async(u:User)=>{if(!supabase)return;const {data}=await supabase.from('profiles').select('id,name,username,avatar').eq('id',u.id).maybeSingle();setProfile((data as Profile|null) ?? {id:u.id,name:(u.user_metadata?.name as string)||u.email?.split('@')[0]||'SCN member',avatar:'👑'});},[]);
+ const loadProfile=useCallback(async(u:User)=>{if(!supabase)return;const {data}=await supabase.from('profiles').select('id,name,username,avatar,bio').eq('id',u.id).maybeSingle();setProfile((data as Profile|null) ?? {id:u.id,name:(u.user_metadata?.name as string)||u.email?.split('@')[0]||'SCN member',avatar:'👑'});},[]);
  const loadPosts=useCallback(async()=>{if(!supabase){setPosts([]);return;}let q=supabase.from('feed_posts').select(COLS).order('created_at',{ascending:false}).limit(80);if(tab==='following'&&user){const {data}=await supabase.from('follows').select('target_id').eq('follower_id',user.id).eq('target_type','user');const ids=(data||[]).map(x=>String(x.target_id)).filter(x=>x!==user.id);if(!ids.length){setPosts([]);return;}q=q.in('user_id',ids);}const {data,error}=await q;if(error){toast.error('Could not load the SCN feed');console.error(error);return;}const rows=(data||[]) as ScnPost[];if(tab==='explore')rows.sort((a,b)=>(b.likes+b.comments_count+b.reposts)-(a.likes+a.comments_count+a.reposts));setPosts(rows);},[tab,user]);
  useEffect(()=>{if(!supabase){setReady(true);return;}supabase.auth.getSession().then(({data})=>{setSession(data.session);if(data.session?.user)void loadProfile(data.session.user);setReady(true);});const {data:l}=supabase.auth.onAuthStateChange((_e,s)=>{setSession(s);if(s?.user)void loadProfile(s.user);else setProfile(null);});return()=>l.subscription.unsubscribe();},[loadProfile]);
  useEffect(()=>{if(ready&&user)void loadPosts();},[ready,user,loadPosts]);
