@@ -30,12 +30,12 @@ returns boolean
 language sql
 security definer
 set search_path = public
-as $
+as $scn$
   select exists (
     select 1 from public.scn_post_group_members
     where group_id = p_group_id and user_id = auth.uid()
   );
-$;
+$scn$;
 
 revoke all on function public.is_scn_post_group_member(uuid) from public;
 grant execute on function public.is_scn_post_group_member(uuid) to anon, authenticated;
