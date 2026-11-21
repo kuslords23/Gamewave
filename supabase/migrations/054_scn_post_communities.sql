@@ -38,7 +38,7 @@ as $
 $;
 
 revoke all on function public.is_scn_post_group_member(uuid) from public;
-grant execute on function public.is_scn_post_group_member(uuid) to authenticated;
+grant execute on function public.is_scn_post_group_member(uuid) to anon, authenticated;
 
 drop policy if exists "SCN Post public groups and memberships are visible" on public.scn_post_groups;
 create policy "SCN Post public groups and memberships are visible"
@@ -60,6 +60,10 @@ drop policy if exists "SCN Post members see their group roster" on public.scn_po
 create policy "SCN Post members see their group roster"
   on public.scn_post_group_members for select
   using (user_id = auth.uid() or public.is_scn_post_group_member(group_id));
+
+grant select on public.scn_post_groups to anon, authenticated;
+grant update, delete on public.scn_post_groups to authenticated;
+grant select on public.scn_post_group_members to authenticated;
 
 create or replace function public.create_scn_post_group(
   p_name text,
