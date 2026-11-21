@@ -23,7 +23,7 @@ export default function QuotedPostPreview({ postId }: { postId: string }) {
         <span className="quoted-post-author">{post.user_avatar || '👑'} <b>{post.user_name}</b></span>
         {post.title && <strong>{post.title}</strong>}
         {post.content && <span className="quoted-post-copy">{post.content}</span>}
-        {post.media_url && <span className="quoted-post-media">{post.post_type === 'video' ? '▶ Video' : post.post_type === 'audio' ? '♫ Audio' : '▧ Media attached'}</span>}
+        {post.media_url && (post.post_type === 'image' ? <img className="quoted-post-image" src={post.media_url} alt="Original post media"/> : post.post_type === 'video' && <img className="quoted-post-image" src={post.cover_url || post.media_url} alt="Original video preview"/>)}{post.media_url && post.post_type === 'audio' && <span className="quoted-post-media">♫ Audio post</span>}
         <small>View original post <ArrowUpRight size={12}/></small>
       </Link>
       : <span className="quoted-post-missing">The original post is no longer available.</span>}
@@ -34,7 +34,7 @@ export default function QuotedPostPreview({ postId }: { postId: string }) {
     .quoted-post-author{display:flex;align-items:center;gap:7px;font-size:11px;color:#d8c4a0}
     .quoted-post-copy{font-size:12px;line-height:1.55;color:#c8c8d1;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
     .quoted-post-link small{display:flex;align-items:center;gap:4px;color:#f1d88c;font-size:10px}
-    .quoted-post-media{font-size:10px;color:#aaaab7}
+    .quoted-post-media{font-size:10px;color:#aaaab7}.quoted-post-image{width:100%;max-height:220px;object-fit:cover;border-radius:9px}
     .quoted-post-missing,.quoted-post-loading{display:flex;align-items:center;gap:7px;padding:13px;font-size:11px;color:#aaaab7}
   `}</style></>;
 }
