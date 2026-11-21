@@ -13,7 +13,7 @@ type RoyalPreferences = { activityInsights: boolean; contentInteractions: boolea
 const DEFAULT_ROYAL_PREFERENCES: RoyalPreferences = { activityInsights: false, contentInteractions: false, discoveryActivity: false, creatorActivity: false, allowDrafts: true, allowContentManagement: false };
 type AppPreferences = { personalizedFeed: boolean; ecosystemStories: boolean; autoplayReels: boolean; pushNotifications: boolean; emailNotifications: boolean; showActivityStatus: boolean };
 const DEFAULT_APP_PREFERENCES: AppPreferences = { personalizedFeed: true, ecosystemStories: true, autoplayReels: false, pushNotifications: true, emailNotifications: false, showActivityStatus: true };
-type Profile = { id: string; name: string; username?: string; avatar?: string };
+type Profile = { id: string; name: string; username?: string; avatar?: string; bio?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
 type Notice = { id: string; title: string; body: string | null; category: string | null; read: boolean; created_at: string; metadata?: Record<string, unknown> };
@@ -55,6 +55,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [profileName, setProfileName] = useState(profile?.name || user.user_metadata?.name || user.email?.split('@')[0] || '');
   const [profileUsername, setProfileUsername] = useState(profile?.username || '');
   const [profileAvatar, setProfileAvatar] = useState(profile?.avatar || '');
+  const [profileBio, setProfileBio] = useState(profile?.bio || '');
   const [profileBusy, setProfileBusy] = useState(false);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [reposted, setReposted] = useState<Set<string>>(new Set());
@@ -241,7 +242,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   useEffect(() => { void loadFollowing(); }, [loadFollowing]);
   useEffect(() => { if (!supabase) return; void supabase.from('feed_post_likes').select('post_id').eq('user_id', user.id).then(({ data }) => setLiked(new Set((data || []).map(row => String(row.post_id))))); void supabase.from('feed_post_reposts').select('post_id').eq('user_id', user.id).then(({ data }) => setReposted(new Set((data || []).map(row => String(row.post_id))))); }, [user.id]);
   useEffect(() => { if (activeTab === 'friends' || activeTab === 'messages') void searchPeople(); }, [activeTab, searchPeople]);
-  useEffect(() => { if (profile) { setProfileName(profile.name || ''); setProfileUsername(profile.username || ''); setProfileAvatar(profile.avatar || ''); } }, [profile]);
+  useEffect(() => { if (profile) { setProfileName(profile.name || ''); setProfileUsername(profile.username || ''); setProfileAvatar(profile.avatar || ''); setProfileBio(profile.bio || ''); } }, [profile]);
   useEffect(() => { if (activeTab === 'notifications') void loadNotices(); }, [activeTab, loadNotices]);
   useEffect(() => { if (activeTab === 'communities') { void loadCommunities(); const params = new URLSearchParams(window.location.search); const groupId = params.get('community'); const invite = params.get('invite'); if (groupId) { setCommunityGroupId(groupId); setCommunityInviteCode(invite || ''); } } }, [activeTab, loadCommunities]);
   useEffect(() => { if (!supabase || activeTab !== 'communities' || !selectedCommunity || !communityMembers.has(selectedCommunity.id)) return; void loadCommunityMessages(selectedCommunity); const channel = supabase.channel('scn-post-community-' + selectedCommunity.id).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'conversation_id=eq.' + selectedCommunity.conversation_id }, payload => { const row = payload.new as ChatMessage; setCommunityMessages(old => old.some(item => item.id === row.id) ? old : [...old, row]); }).subscribe(); return () => { if (supabase) void supabase.removeChannel(channel); }; }, [activeTab, selectedCommunity, communityMembers, loadCommunityMessages]);
@@ -295,7 +296,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     event.preventDefault();
     if (!supabase) return;
     setProfileBusy(true);
-    const { error } = await supabase.from('profiles').update({ name: profileName.trim(), username: profileUsername.trim().replace(/^@/, ''), avatar: profileAvatar.trim() || '👑' }).eq('id', user.id);
+    const { error } = await supabase.from('profiles').update({ name: profileName.trim(), username: profileUsername.trim().replace(/^@/, ''), avatar: profileAvatar.trim() || '👑', bio: profileBio.trim().slice(0, 300) }).eq('id', user.id);
     if (error) toast.error('Profile update failed: ' + error.message);
     else toast.success('Profile updated');
     setProfileBusy(false);
@@ -489,7 +490,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     if (activeTab === 'profile') return <section className="scnf-panel">
       <div className="scnf-panel-head"><div><span className="scnf-kicker">YOUR IDENTITY</span><h2>My profile</h2><p>Manage the profile connected to your shared SCN account.</p></div></div>
       <div className="scnf-profile-hero"><Avatar name={profileName || currentName} src={profileAvatar || currentAvatar}/><div><h3>{profileName || currentName}</h3><p>@{profileUsername.replace(/^@/, '') || 'scn-member'}</p><span>{myPosts.length} posts · {following.size} following</span><a className="scnf-public-profile-link" href={'/member/'+user.id}>View public profile ↗</a></div></div>
-      <form className="scnf-profile-form" onSubmit={saveProfile}><label>Display name<input value={profileName} onChange={e => setProfileName(e.target.value)} required/></label><label>Username<input value={profileUsername} onChange={e => setProfileUsername(e.target.value)} placeholder="your-username"/></label><label>Avatar URL or emoji<input value={profileAvatar} onChange={e => setProfileAvatar(e.target.value)} placeholder="Paste an image URL or use an emoji"/></label><button className="scnf-gold-button" disabled={profileBusy}>{profileBusy ? 'Saving…' : 'Save profile'}</button></form>
+      <form className="scnf-profile-form" onSubmit={saveProfile}><label>Display name<input value={profileName} onChange={e => setProfileName(e.target.value)} required/></label><label>Username<input value={profileUsername} onChange={e => setProfileUsername(e.target.value)} placeholder="your-username"/></label><label>Avatar URL or emoji<input value={profileAvatar} onChange={e => setProfileAvatar(e.target.value)} placeholder="Paste an image URL or use an emoji"/></label><label>About you<textarea value={profileBio} onChange={e => setProfileBio(e.target.value)} maxLength={300} rows={3} placeholder="A little about yourself…"/></label><button className="scnf-gold-button" disabled={profileBusy}>{profileBusy ? 'Saving…' : 'Save profile'}</button></form>
       <div className="scnf-section-title">Your recent posts</div><div className="scnf-own-posts">{myPosts.slice(0, 8).map(post => <article key={post.id}><b>{post.title || post.content || 'Untitled post'}</b><small>{ago(post.created_at)} · {post.likes} likes · {post.comments_count} comments</small></article>)}</div>
     </section>;
 
