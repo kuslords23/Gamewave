@@ -1,7 +1,7 @@
 -- Quote reposts are first-class feed posts that reference the canonical original post.
 -- The original remains a single feed_posts row; commentary lives in the quoting member's row.
-create schema if not exists private;
-revoke all on schema private from public, anon, authenticated;
+create schema if not exists scn_post_private;
+revoke all on schema scn_post_private from public, anon, authenticated;
 
 alter table public.feed_posts
   add column if not exists quoted_post_id uuid null
@@ -11,7 +11,7 @@ create index if not exists feed_posts_quoted_post_idx
   on public.feed_posts(quoted_post_id, created_at desc)
   where quoted_post_id is not null;
 
-create or replace function private.sync_scn_quote_repost()
+create or replace function scn_post_private.sync_scn_quote_repost()
 returns trigger
 language plpgsql
 security definer
