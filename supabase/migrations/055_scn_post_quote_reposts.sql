@@ -1,6 +1,8 @@
 -- Quote reposts are first-class feed posts that reference the canonical original post.
+-- The original remains a single feed_posts row; commentary lives in the quoting member's row.
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
+
 alter table public.feed_posts
   add column if not exists quoted_post_id uuid null
   references public.feed_posts(id) on delete set null;
@@ -18,30 +20,34 @@ as $$
 declare
   v_author uuid;
 begin
-  if tg_op = 'INSERT' and new.quoted_post_id is not null then
-    update public.feed_posts
-      set reposts = coalesce(reposts, 0) + 1
-      where id = new.quoted_post_id
-      returning user_id into v_author;
+  if tg_op = 'INSERT' then
+    if new.quoted_post_id is not null then
+      update public.feed_posts
+        set reposts = coalesce(reposts, 0) + 1
+        where id = new.quoted_post_id
+        returning user_id into v_author;
 
-    if v_author is not null and v_author <> new.user_id then
-      insert into public.notifications(user_id, title, body, category, metadata)
-      values (
-        v_author,
-        'Your post was quoted',
-        'Someone added their perspective to your post.',
-        'repost',
-        jsonb_build_object('postId', new.quoted_post_id, 'quotePostId', new.id, 'actorId', new.user_id)
-      );
+      if v_author is not null and v_author <> new.user_id then
+        insert into public.notifications(user_id, title, body, category, metadata)
+        values (
+          v_author,
+          'Your post was quoted',
+          'Someone added their perspective to your post.',
+          'repost',
+          jsonb_build_object('postId', new.quoted_post_id, 'quotePostId', new.id, 'actorId', new.user_id)
+        );
+      end if;
     end if;
     return new;
-  elsif tg_op = 'DELETE' and old.quoted_post_id is not null then
-    update public.feed_posts
-      set reposts = greatest(0, coalesce(reposts, 0) - 1)
-      where id = old.quoted_post_id;
+  elsif tg_op = 'DELETE' then
+    if old.quoted_post_id is not null then
+      update public.feed_posts
+        set reposts = greatest(0, coalesce(reposts, 0) - 1)
+        where id = old.quoted_post_id;
+    end if;
     return old;
-  if tg_op = 'DELETE' then return old; end if;
-  return new;
+  end if;
+  return null;
 end;
 $$;
 
