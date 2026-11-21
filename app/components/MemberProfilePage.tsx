@@ -30,7 +30,7 @@ export default function MemberProfilePage() {
   const load = useCallback(async () => {
     if (!supabase || !key) { setLoading(false); return; }
     setLoading(true);
-    const byId = await supabase.from('profiles').select('id,name,username,avatar,bio').eq('id', key).maybeSingle();
+    const byId = await supabase.from('scn_post_public_profiles').select('id,name,username,avatar,bio').eq('id', key).maybeSingle();
     const result = byId.data ? byId : await supabase.from('profiles').select('id,name,username,avatar,bio').eq('username', key).maybeSingle();
     if (result.error || !result.data) { setMember(null); setPosts([]); setLoading(false); return; }
     const profile = result.data as Member;
