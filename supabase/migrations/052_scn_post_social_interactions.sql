@@ -14,9 +14,14 @@ begin
 end; $$;
 drop trigger if exists tr_sync_feed_post_like_count on public.feed_post_likes;
 create trigger tr_sync_feed_post_like_count after insert or delete on public.feed_post_likes for each row execute function public.sync_feed_post_like_count();
+grant select on public.feed_post_likes to anon, authenticated;
+grant insert, delete on public.feed_post_likes to authenticated;
+
 create table if not exists public.feed_post_saves(post_id uuid not null references public.feed_posts(id) on delete cascade,user_id uuid not null references auth.users(id) on delete cascade,created_at timestamptz not null default now(),primary key(post_id,user_id));
 create index if not exists feed_post_saves_user_idx on public.feed_post_saves(user_id,created_at desc);
 alter table public.feed_post_saves enable row level security;
 drop policy if exists "Users manage own post saves" on public.feed_post_saves;
 create policy "Users manage own post saves" on public.feed_post_saves for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
-do $$ begin alter publication supabase_realtime add table public.feed_post_likes; exception when duplicate_object then null; end $$;
+grant select, insert, delete on public.feed_post_saves to authenticated;
+
+do $ begin alter publication supabase_realtime add table public.feed_post_likes; exception when duplicate_object then null; end $$;
