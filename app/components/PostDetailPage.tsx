@@ -121,7 +121,7 @@ export default function PostDetailPage() {
             <article className="post-detail-card">
               <div className="post-detail-author"><Avatar name={post.user_name} src={post.user_avatar}/><div><b><a href={'/member/'+post.user_id}>{post.user_name}</a></b><small>{new Date(post.created_at).toLocaleString()} · {post.post_type.replace('_', ' ')}</small></div></div>
               {post.title && <h1>{post.title}</h1>}
-              {post.content && <div className="post-detail-copy"><FeedPostText text={post.content}/></div>}{post.quoted_post_id && <QuotedPostPreview postId={post.quoted_post_id}/ >}
+              {post.content && <div className="post-detail-copy"><FeedPostText text={post.content}/></div>}{post.quoted_post_id && <QuotedPostPreview postId={post.quoted_post_id}/>}
               {mediaKind === 'image' && post.media_url && <img className="post-detail-media" src={post.media_url} alt={post.content || 'Post image'}/>}
               {mediaKind === 'video' && post.media_url && <video className="post-detail-media" src={post.media_url} poster={post.cover_url || undefined} controls playsInline preload="metadata"/>}
               {mediaKind === 'audio' && post.media_url && <div className="post-detail-audio"><b>{post.sound_title || post.title || 'Audio post'}</b><small>{post.sound_artist || post.user_name}</small><audio src={post.media_url} controls/></div>}
