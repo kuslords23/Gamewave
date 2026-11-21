@@ -56,10 +56,14 @@ create policy "Users read own post reposts"
   using (auth.uid() = user_id);
 
 drop policy if exists "Users manage own post reposts" on public.feed_post_reposts;
-create policy "Users manage own post reposts"
-  on public.feed_post_reposts for all
-  using (auth.uid() = user_id)
+drop policy if exists "Users create own post reposts" on public.feed_post_reposts;
+create policy "Users create own post reposts"
+  on public.feed_post_reposts for insert
   with check (auth.uid() = user_id);
+drop policy if exists "Users delete own post reposts" on public.feed_post_reposts;
+create policy "Users delete own post reposts"
+  on public.feed_post_reposts for delete
+  using (auth.uid() = user_id);
 
 create or replace function public.sync_feed_post_repost_count()
 returns trigger
