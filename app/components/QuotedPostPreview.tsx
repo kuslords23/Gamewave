@@ -17,7 +17,7 @@ export default function QuotedPostPreview({ postId }: { postId: string }) {
       .then(({ data }) => { if (live) { setPost(data as OriginalPost | null); setLoading(false); } });
     return () => { live = false; };
   }, [postId]);
-  return <div className="quoted-post-preview">
+  return <><div className="quoted-post-preview">
     {loading ? <span className="quoted-post-loading"><LoaderCircle size={14}/> Loading original post…</span>
       : post ? <Link href={'/post/' + post.id} className="quoted-post-link">
         <span className="quoted-post-author">{post.user_avatar || '👑'} <b>{post.user_name}</b></span>
@@ -36,5 +36,5 @@ export default function QuotedPostPreview({ postId }: { postId: string }) {
     .quoted-post-link small{display:flex;align-items:center;gap:4px;color:#f1d88c;font-size:10px}
     .quoted-post-media{font-size:10px;color:#aaaab7}
     .quoted-post-missing,.quoted-post-loading{display:flex;align-items:center;gap:7px;padding:13px;font-size:11px;color:#aaaab7}
-  `}</style>;
+  `}</style></>;
 }
