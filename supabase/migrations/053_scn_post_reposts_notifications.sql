@@ -1,3 +1,35 @@
+-- The shared member follow graph used by KUS Post profiles and the Following feed.
+create table if not exists public.follows (
+  follower_id uuid not null references auth.users(id) on delete cascade,
+  target_type text not null,
+  target_id text not null,
+  target_name text not null default '',
+  target_avatar text not null default '👑',
+  created_at timestamptz not null default now(),
+  primary key (follower_id, target_type, target_id),
+  check (length(trim(target_type)) between 1 and 40),
+  check (length(trim(target_id)) between 1 and 160)
+);
+
+create index if not exists follows_target_idx
+  on public.follows(target_type, target_id, created_at desc);
+create index if not exists follows_follower_idx
+  on public.follows(follower_id, target_type, created_at desc);
+
+alter table public.follows enable row level security;
+drop policy if exists "SCN member follows are publicly readable" on public.follows;
+create policy "SCN member follows are publicly readable"
+  on public.follows for select using (true);
+drop policy if exists "Members manage their own follows" on public.follows;
+create policy "Members manage their own follows"
+  on public.follows for insert with check (auth.uid() = follower_id);
+drop policy if exists "Members remove their own follows" on public.follows;
+create policy "Members remove their own follows"
+  on public.follows for delete using (auth.uid() = follower_id);
+
+grant select on public.follows to anon, authenticated;
+grant insert, delete on public.follows to authenticated;
+
 -- SCN Post repost records and activity notifications.
 -- Additive only: original feed_posts remain the canonical post records.
 
@@ -12,6 +44,9 @@ create index if not exists feed_post_reposts_user_idx
   on public.feed_post_reposts(user_id, created_at desc);
 create index if not exists feed_post_reposts_post_idx
   on public.feed_post_reposts(post_id, created_at desc);
+
+grant select on public.feed_post_reposts to authenticated;
+grant insert, delete on public.feed_post_reposts to authenticated;
 
 alter table public.feed_post_reposts enable row level security;
 
@@ -62,6 +97,8 @@ begin
 end;
 $$;
 
+
+revoke all on function public.sync_feed_post_repost_count() from public, anon, authenticated;
 drop trigger if exists tr_sync_feed_post_repost_count on public.feed_post_reposts;
 create trigger tr_sync_feed_post_repost_count
   after insert or delete on public.feed_post_reposts
@@ -98,6 +135,8 @@ begin
 end;
 $$;
 
+
+revoke all on function public.notify_scn_post_comment() from public, anon, authenticated;
 drop trigger if exists tr_notify_scn_post_comment on public.feed_comments;
 create trigger tr_notify_scn_post_comment
   after insert on public.feed_comments
@@ -128,6 +167,8 @@ begin
 end;
 $$;
 
+
+revoke all on function public.notify_scn_post_like() from public, anon, authenticated;
 drop trigger if exists tr_notify_scn_post_like on public.feed_post_likes;
 create trigger tr_notify_scn_post_like
   after insert on public.feed_post_likes
@@ -163,6 +204,8 @@ begin
 end;
 $$;
 
+
+revoke all on function public.notify_scn_post_follow() from public, anon, authenticated;
 drop trigger if exists tr_notify_scn_post_follow on public.follows;
 create trigger tr_notify_scn_post_follow
   after insert on public.follows
