@@ -31,7 +31,7 @@ export default function MemberProfilePage() {
     if (!supabase || !key) { setLoading(false); return; }
     setLoading(true);
     const byId = await supabase.from('profiles').select('id,name,username,avatar,bio').eq('id', key).maybeSingle();
-    const result = byId.data ? byId : await supabase.from('profiles').select('id,name,username,avatar').eq('username', key).maybeSingle();
+    const result = byId.data ? byId : await supabase.from('profiles').select('id,name,username,avatar,bio').eq('username', key).maybeSingle();
     if (result.error || !result.data) { setMember(null); setPosts([]); setLoading(false); return; }
     const profile = result.data as Member;
     setMember(profile);
