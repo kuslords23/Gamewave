@@ -1,0 +1,64 @@
+-- Quote reposts are first-class feed posts that reference the canonical original post.
+alter table public.feed_posts
+  add column if not exists quoted_post_id uuid null
+  references public.feed_posts(id) on delete set null;
+
+create index if not exists feed_posts_quoted_post_idx
+  on public.feed_posts(quoted_post_id, created_at desc)
+  where quoted_post_id is not null;
+
+create or replace function public.sync_scn_quote_repost()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_author uuid;
+begin
+  if tg_op = 'INSERT' and new.quoted_post_id is not null then
+    update public.feed_posts
+      set reposts = coalesce(reposts, 0) + 1
+      where id = new.quoted_post_id
+      returning user_id into v_author;
+
+    if v_author is not null and v_author <> new.user_id then
+      insert into public.notifications(user_id, title, body, category, metadata)
+      values (
+        v_author,
+        'Your post was quoted',
+        'Someone added their perspective to your post.',
+        'repost',
+        jsonb_build_object('postId', new.quoted_post_id, 'quotePostId', new.id, 'actorId', new.user_id)
+      );
+    end if;
+    return new;
+  elsif tg_op = 'DELETE' and old.quoted_post_id is not null then
+    update public.feed_posts
+      set reposts = greatest(0, coalesce(reposts, 0) - 1)
+      where id = old.quoted_post_id;
+    return old;
+  elsif tg_op = 'UPDATE' and old.quoted_post_id is distinct from new.quoted_post_id then
+    if old.quoted_post_id is not null then
+      update public.feed_posts
+        set reposts = greatest(0, coalesce(reposts, 0) - 1)
+        where id = old.quoted_post_id;
+    end if;
+    if new.quoted_post_id is not null then
+      update public.feed_posts
+        set reposts = coalesce(reposts, 0) + 1
+        where id = new.quoted_post_id;
+    end if;
+    return new;
+  end if;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists tr_sync_scn_quote_repost on public.feed_posts;
+create trigger tr_sync_scn_quote_repost
+  after insert or update of quoted_post_id or delete on public.feed_posts
+  for each row execute function public.sync_scn_quote_repost();
+
+comment on column public.feed_posts.quoted_post_id is
+  'References the canonical original post for a quote repost. Commentary remains in this feed_posts row.';
