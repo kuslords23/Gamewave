@@ -102,7 +102,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     if (!supabase) return;
     setPeopleBusy(true);
     const q = peopleQuery.trim().replace(/^@/, '').replace(/[%_]/g, '');
-    let query = supabase.from('profiles').select('id,name,username,avatar').neq('id', user.id).order('name').limit(40);
+    let query = supabase.from('scn_post_public_profiles').select('id,name,username,avatar,bio').neq('id', user.id).order('name').limit(40);
     if (q) query = query.or('name.ilike.%' + q + '%,username.ilike.%' + q + '%');
     const { data, error } = await query;
     if (error) toast.error('Could not search members: ' + error.message);
