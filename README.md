@@ -11,8 +11,10 @@ A dedicated, mobile-first social companion for Sport-Clan-Nexus. The interface a
 - **Reels:** vertical video viewing, likes, reposts, share links and view-count tracking.
 - **Messages:** direct conversations using the shared SCN conversation IDs and membership model. Existing mutual-follow / accepted-chat-request access rules are respected.
 - **Communities:** public and private groups, invite links and group conversations using the shared SCN chat message store.
-- **Notifications:** reads the shared notifications table. New likes, comments, reposts and user follows generate activity notifications.
-- **My Profile:** edit display name, username and avatar on the shared profile.
+- **Notifications:** reads the shared notifications table. New likes, comments, reposts, quote reposts and user follows generate activity notifications.
+- **Quote Reposts:** publish commentary while retaining a reference to the canonical original post. The original remains a single post record and quote reposts are counted against it.
+- **Member Profiles:** public member pages with profile identity, follower counts, follow controls and a timeline of posts and quote reposts.
+- **My Profile:** edit display name, username and avatar on the shared profile; open the matching public profile page.
 - **Creator Studio:** post, like, comment, repost, view and listen counters from the shared feed. Audience retention, follower-growth attribution and revenue analytics are not represented as available.
 - **Royal:** uses the authenticated shared Royal gateway through a same-origin server proxy. SCN Post uses the supported `hub` companion identity; it does not create a second assistant or model runtime.
 
