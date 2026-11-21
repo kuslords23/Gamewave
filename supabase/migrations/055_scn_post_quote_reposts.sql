@@ -51,12 +51,12 @@ begin
 end;
 $$;
 
-revoke all on function private.sync_scn_quote_repost() from public, anon, authenticated;
+revoke all on function scn_post_private.sync_scn_quote_repost() from public, anon, authenticated;
 
 drop trigger if exists tr_sync_scn_quote_repost on public.feed_posts;
 create trigger tr_sync_scn_quote_repost
   after insert or delete on public.feed_posts
-  for each row execute function private.sync_scn_quote_repost();
+  for each row execute function scn_post_private.sync_scn_quote_repost();
 
 comment on column public.feed_posts.quoted_post_id is
   'References the canonical original post for a quote repost. Commentary remains in this feed_posts row.';
