@@ -27,7 +27,7 @@ begin
         where id = new.quoted_post_id
         returning user_id into v_author;
 
-      if v_author is not null and v_author <> new.user_id then
+      if v_author is not null and v_author::text <> new.user_id::text then
         insert into public.notifications(user_id, title, body, category, metadata)
         values (
           v_author,
