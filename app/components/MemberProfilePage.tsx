@@ -37,8 +37,8 @@ const DETAIL_FIELDS: { key: keyof ProfileDetails; label: string; icon: typeof Br
   { key: 'education', label: 'Education', icon: GraduationCap, placeholder: 'Schools, qualifications and courses' },
   { key: 'business', label: 'Business', icon: Building2, placeholder: 'Business name, industry, products or services' },
   { key: 'relationshipStatus', label: 'Relationship status', icon: Heart, placeholder: 'Optional relationship status' },
-  { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://yourwebsite.com' },
-  { key: 'publicEmail', label: 'Public contact email', icon: Mail, placeholder: 'contact@example.com' },
+  { key: 'website', label: 'Websites and social links', icon: Globe, placeholder: 'One URL per line, or separate links with commas' },
+  { key: 'publicEmail', label: 'Public contact emails', icon: Mail, placeholder: 'One email per line, or separate addresses with commas' },
   { key: 'interests', label: 'Interests', icon: Heart, placeholder: 'Music, football, technology…' },
   { key: 'skills', label: 'Skills', icon: BriefcaseBusiness, placeholder: 'Leadership, design, writing…' },
   { key: 'languages', label: 'Languages', icon: Globe, placeholder: 'English, Twi, French…' },
@@ -313,7 +313,8 @@ export default function MemberProfilePage() {
     </article>)}</div>;
 
   const isOwn = Boolean(member && viewer === member.id);
-  const website = details.website ? externalUrl(details.website) : '';
+  const websiteLinks = (details.website || '').split(/[\\n,]+/).map(value => value.trim()).filter(Boolean);
+  const publicEmails = (details.publicEmail || '').split(/[\\n,]+/).map(value => value.trim()).filter(Boolean);
   const visibleDetails = DETAIL_FIELDS.filter(field => Boolean(details[field.key]?.trim()));
   const tabs: { id: ProfileTab; label: string }[] = [
     { id: 'posts', label: 'Posts' }, { id: 'gallery', label: 'Gallery' }, { id: 'about', label: 'About' },
@@ -344,8 +345,8 @@ export default function MemberProfilePage() {
             </div>
             {member.bio && <p className="member-bio">{member.bio}</p>}
             <div className="member-profile-links">
-              {website && <a href={website} target="_blank" rel="noreferrer"><Link2 size={14}/> Website <ExternalLink size={12}/></a>}
-              {details.publicEmail && <a href={'mailto:' + details.publicEmail}><Mail size={14}/> Email</a>}
+              {websiteLinks.map((url, index) => <a key={url + index} href={externalUrl(url)} target="_blank" rel="noreferrer"><Link2 size={14}/> {url} <ExternalLink size={12}/></a>)}
+              {publicEmails.map((email, index) => <a key={email + index} href={'mailto:' + email}><Mail size={14}/> {email}</a>)}
               {details.location && <span><MapPin size={14}/>{details.location}</span>}
             </div>
             {isOwn && <div className="member-owner-shortcuts"><a href={SCN_BASE_URL + '/live'} target="_blank" rel="noreferrer"><Radio size={15}/> Go live with SCN</a><span>SCN provides live audio/video sessions and calls.</span></div>}
@@ -370,7 +371,7 @@ export default function MemberProfilePage() {
             {gallery.length === 0 ? <div className="member-state">Photos, videos and audio posts will appear here.</div> : <div className="member-gallery">{gallery.map(post => <Link href={'/post/' + post.id} key={post.id} className="member-gallery-item">{post.post_type === 'video' ? <><video src={post.media_url || undefined} poster={post.cover_url || undefined} muted playsInline/><span>VIDEO</span></> : post.post_type === 'audio' ? <div className="member-gallery-audio"><Radio size={26}/><span>Audio post</span></div> : <img src={post.media_url || ''} alt="Gallery item"/>}</Link>)}</div>}
           </>}
           {tab === 'about' && <section className="member-about"><div className="member-post-heading"><div><span>PERSONAL & PROFESSIONAL</span><h2>About {member.name}</h2></div></div>
-            {visibleDetails.length === 0 ? <div className="member-state">This member hasn't added public information yet.</div> : <div className="member-about-grid">{visibleDetails.map(field => { const Icon = field.icon; return <article key={field.key}><Icon size={18}/><div><b>{field.label}</b>{field.key === 'website' ? <a href={website} target="_blank" rel="noreferrer">{details[field.key]}</a> : field.key === 'publicEmail' ? <a href={'mailto:' + details[field.key]}>{details[field.key]}</a> : <p>{details[field.key]}</p>}</div></article>; })}</div>}
+            {visibleDetails.length === 0 ? <div className="member-state">This member hasn't added public information yet.</div> : <div className="member-about-grid">{visibleDetails.map(field => { const Icon = field.icon; return <article key={field.key}><Icon size={18}/><div><b>{field.label}</b>{field.key === 'website' ? websiteLinks.map((url, index) => <a key={url + index} href={externalUrl(url)} target="_blank" rel="noreferrer">{url}</a>) : field.key === 'publicEmail' ? publicEmails.map((email, index) => <a key={email + index} href={'mailto:' + email}>{email}</a>) : <p>{details[field.key]}</p>}</div></article>; })}</div>}
           </section>}
           {tab === 'activity' && <section><div className="member-post-heading"><div><span>YOUR INTERACTIONS</span><h2>{isOwn ? 'Your activity' : 'Public activity'}</h2></div></div>
             {isOwn ? <><div className="member-subtabs"><button className={activityTab === 'liked' ? 'active' : ''} onClick={() => setActivityTab('liked')}><Heart size={14}/> Liked posts</button><button className={activityTab === 'saved' ? 'active' : ''} onClick={() => setActivityTab('saved')}><Bookmark size={14}/> Saved posts</button></div>{renderPosts(activityTab === 'liked' ? likedPosts : savedPosts)}<p className="member-private-note"><Lock size={13}/> Your liked and saved posts are visible only to you.</p></> : <div className="member-state">Only public posts and conversations are shown on this profile.</div>}
