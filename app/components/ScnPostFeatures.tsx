@@ -12,7 +12,7 @@ type FeatureTab = 'friends' | 'reels' | 'messages' | 'communities' | 'notificati
 type RoyalPreferences = { activityInsights: boolean; contentInteractions: boolean; discoveryActivity: boolean; creatorActivity: boolean; allowDrafts: boolean; allowContentManagement: boolean; };
 const DEFAULT_ROYAL_PREFERENCES: RoyalPreferences = { activityInsights: false, contentInteractions: false, discoveryActivity: false, creatorActivity: false, allowDrafts: true, allowContentManagement: false };
 type AppPreferences = { personalizedFeed: boolean; ecosystemStories: boolean; autoplayReels: boolean; pushNotifications: boolean; emailNotifications: boolean; showActivityStatus: boolean };
-const DEFAULT_APP_PREFERENCES: AppPreferences = { personalizedFeed: true, ecosystemStories: true, autoplayReels: false, pushNotifications: true, emailNotifications: false, showActivityStatus: true };
+const DEFAULT_APP_PREFERENCES: AppPreferences = { personalizedFeed: true, ecosystemStories: true, autoplayReels: true, pushNotifications: true, emailNotifications: false, showActivityStatus: true };
 type Profile = { id: string; name: string; username?: string; avatar?: string; bio?: string };
 type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
@@ -61,6 +61,8 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [reposted, setReposted] = useState<Set<string>>(new Set());
   const [viewedReels, setViewedReels] = useState<Set<string>>(new Set());
   const [reelIndex, setReelIndex] = useState(0);
+  const [reelMode, setReelMode] = useState<'for-you' | 'following' | 'latest'>('for-you');
+  const reelFeedRef = useRef<HTMLDivElement | null>(null);
   const [noticeFilter, setNoticeFilter] = useState<'all' | 'unread'>('all');
   const [chatAllowed, setChatAllowed] = useState<boolean | null>(null);
   const [royalTurns, setRoyalTurns] = useState<RoyalTurn[]>([]);
@@ -89,6 +91,23 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const currentAvatar = profile?.avatar || String(user.user_metadata?.avatar || '👑');
   const myPosts = useMemo(() => posts.filter(p => p.user_id === user.id), [posts, user.id]);
   const reels = useMemo(() => posts.filter(p => (p.post_type === 'video' || p.media_mime?.startsWith('video/')) && p.media_url), [posts]);
+  const visibleReels = useMemo(() => {
+    const candidates = reelMode === 'following' ? reels.filter(post => following.has(post.user_id)) : [...reels];
+    if (reelMode === 'latest') return candidates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (reelMode === 'for-you' && appPreferences.personalizedFeed) {
+      const now = Date.now();
+      return candidates.sort((a, b) => {
+        const score = (post: ScnPost) => {
+          const ageHours = Math.max(1, (now - new Date(post.created_at).getTime()) / 3600000);
+          const engagement = Number(post.likes || 0) + Number(post.comments_count || 0) * 2 + Number(post.reposts || 0) * 2 + Number(post.view_count || 0) * 0.025;
+          const affinity = following.has(post.user_id) ? 1.2 : 1;
+          return ((engagement + 1) * affinity) / Math.pow(ageHours + 2, 0.42);
+        };
+        return score(b) - score(a);
+      });
+    }
+    return candidates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [reels, reelMode, following, appPreferences.personalizedFeed]);
   const filteredNotices = useMemo(() => notices.filter(n => noticeFilter === 'all' || !n.read), [notices, noticeFilter]);
 
   const loadFollowing = useCallback(async () => {
@@ -325,6 +344,27 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
 
   const recordReelView = async (post: ScnPost) => { if (!supabase || viewedReels.has(post.id)) return; setViewedReels(old => new Set(old).add(post.id)); const { error } = await supabase.rpc('bump_feed_post_view_count', { p_id: post.id }); if (error) console.warn('Reel view count was not recorded:', error.message); };
 
+  useEffect(() => {
+    if (activeTab !== 'reels' || !reelFeedRef.current) return;
+    const root = reelFeedRef.current;
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const video = entry.target.querySelector('video');
+        if (!(video instanceof HTMLVideoElement)) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+          const index = Number((entry.target as HTMLElement).dataset.index || 0);
+          setReelIndex(index);
+          if (appPreferences.autoplayReels) {
+            video.muted = true;
+            void video.play().catch(() => undefined);
+          }
+        } else video.pause();
+      });
+    }, { root, threshold: [0, 0.35, 0.65, 0.9] });
+    root.querySelectorAll('.scnf-reel-card').forEach(card => observer.observe(card));
+    return () => observer.disconnect();
+  }, [activeTab, visibleReels, appPreferences.autoplayReels]);
+
   const sharePost = async (post: ScnPost) => {
     const url = window.location.origin + '/?post=' + post.id;
     try { if (navigator.share) await navigator.share({ title: 'SCN Post', text: post.content || 'See this post', url }); else { await navigator.clipboard.writeText(url); toast.success('Link copied'); } }
@@ -454,9 +494,34 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
       {!peopleBusy && people.length === 0 && <div className="scnf-empty">No members found. Try another name or username.</div>}
     </section>;
 
-    if (activeTab === 'reels') return <section className="scnf-panel">
-      <div className="scnf-panel-head"><div><span className="scnf-kicker">SHORT-FORM VIDEO</span><h2>Reels</h2><p>Discover video posts from across the SCN community.</p></div><button className="scnf-gold-button" onClick={onCreatePost}><Plus size={16}/> Create video</button></div>
-      {reels.length === 0 ? <div className="scnf-empty"><Film size={30}/><b>No reels yet</b><p>Video posts published to the shared SCN feed will appear here.</p><button className="scnf-gold-button" onClick={onCreatePost}>Upload a video</button></div> : <div className="scnf-reels-layout"><div className="scnf-reel-stage"><div className="scnf-reel-video-wrap"><video key={reels[reelIndex]?.id} src={reels[reelIndex]?.media_url || ''} controls playsInline autoPlay muted loop className="scnf-reel-video" onPlay={() => void recordReelView(reels[reelIndex])}/><div className="scnf-reel-overlay"><span>{reels[reelIndex]?.user_name}</span><p>{reels[reelIndex]?.content}</p></div></div><div className="scnf-reel-actions"><button onClick={() => void toggleLike(reels[reelIndex])} className={liked.has(reels[reelIndex]?.id) ? 'active' : ''}><Heart size={19}/>Like</button><button onClick={() => void toggleRepost(reels[reelIndex])} className={reposted.has(reels[reelIndex]?.id) ? 'active' : ''}><Share2 size={19}/>Repost</button><button onClick={() => void sharePost(reels[reelIndex])}><Send size={19}/>Share</button></div></div><div className="scnf-reel-rail">{reels.map((reel, index) => <button key={reel.id} className={index === reelIndex ? 'selected' : ''} onClick={() => setReelIndex(index)}><span>{index + 1}</span><div><b>{reel.user_name}</b><small>{reel.content || 'Video post'}</small></div></button>)}</div></div>}
+    if (activeTab === 'reels') return <section className="scnf-panel scnf-reels-panel">
+      <div className="scnf-panel-head"><div><span className="scnf-kicker">SHORT-FORM VIDEO</span><h2>Reels</h2><p>A dedicated video stream. Scroll to move between creators and clips.</p></div><button className="scnf-gold-button" onClick={onCreatePost}><Plus size={16}/> Create video</button></div>
+      <div className="scnf-reel-discovery-tabs" role="tablist" aria-label="Reel discovery">
+        <button className={reelMode === 'for-you' ? 'selected' : ''} onClick={() => setReelMode('for-you')}>For You</button>
+        <button className={reelMode === 'following' ? 'selected' : ''} onClick={() => setReelMode('following')}>Following</button>
+        <button className={reelMode === 'latest' ? 'selected' : ''} onClick={() => setReelMode('latest')}>Latest</button>
+        <span>{visibleReels.length} videos</span>
+      </div>
+      {visibleReels.length === 0 ? <div className="scnf-empty"><Film size={30}/><b>{reelMode === 'following' ? 'No Reels from your following yet' : 'No reels yet'}</b><p>{reelMode === 'following' ? 'Follow creators to build this stream.' : 'Video posts published to the shared SCN feed will appear here.'}</p><button className="scnf-gold-button" onClick={reelMode === 'following' ? () => onTabChange('friends') : onCreatePost}>{reelMode === 'following' ? 'Find creators' : 'Upload a video'}</button></div> : <div className="scnf-reel-feed" ref={reelFeedRef}>
+        {visibleReels.map((reel, index) => <article className="scnf-reel-card" data-index={index} key={reel.id}>
+          <video src={reel.media_url || ''} poster={reel.cover_url || undefined} controls playsInline muted={!appPreferences.autoplayReels} loop preload={index < 2 ? 'metadata' : 'none'} className="scnf-reel-video" onPlay={() => void recordReelView(reel)} />
+          <div className="scnf-reel-gradient"/>
+          <div className="scnf-reel-card-copy">
+            <a href={'/member/' + reel.user_id} className="scnf-reel-creator"><Avatar name={reel.user_name} src={reel.user_avatar}/><span><b>{reel.user_name}</b><small>View creator profile</small></span></a>
+            {reel.content && <p>{reel.content}</p>}
+            {!!reel.hashtags?.length && <div className="scnf-reel-tags">{reel.hashtags.slice(0, 5).map(tag => <span key={tag}>#{tag}</span>)}</div>}
+            <small className="scnf-reel-views"><Eye size={13}/> {Number(reel.view_count || 0).toLocaleString()} views</small>
+          </div>
+          <div className="scnf-reel-card-actions">
+            <button onClick={() => void toggleLike(reel)} className={liked.has(reel.id) ? 'active' : ''} aria-label="Like Reel"><Heart size={21}/><span>{Number(reel.likes || 0).toLocaleString()}</span></button>
+            <a href={'/post/' + reel.id} aria-label="Open Reel discussion"><MessageCircle size={21}/><span>{Number(reel.comments_count || 0).toLocaleString()}</span></a>
+            <button onClick={() => void toggleRepost(reel)} className={reposted.has(reel.id) ? 'active' : ''} aria-label="Repost Reel"><Share2 size={21}/><span>Repost</span></button>
+            <button onClick={() => void sharePost(reel)} aria-label="Share Reel"><Send size={20}/><span>Share</span></button>
+            {!following.has(reel.user_id) && reel.user_id !== user.id && <button onClick={() => void toggleFollow({id:reel.user_id,name:reel.user_name,username:'',avatar:reel.user_avatar || '👑'})} aria-label="Follow creator"><UserPlus size={20}/><span>Follow</span></button>}
+          </div>
+        </article>)}
+      </div>}
+      <p className="scnf-reel-footnote">For You ranks eligible video posts using recency and visible engagement signals. Following only shows creators you follow. Playback pauses when a Reel leaves the viewing area.</p>
     </section>;
 
     if (activeTab === 'communities') return <section className="scnf-panel">
