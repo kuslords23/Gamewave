@@ -162,3 +162,27 @@ body:has(.gw-app){height:100%;overflow:hidden}
 .gw-app.theme-light .gw-post-card .post-actions button{color:var(--gw-muted)}
 .gw-app.theme-light .gw-post-card .gw-post-stats{color:var(--gw-muted)}
 .gw-app.theme-dark .gw-post-card .post-copy{color:var(--gw-text)}
+
+
+/* Post overflow menu: compact on desktop, touch-friendly sheet-like popover on phones. */
+.gw-post-card{overflow:visible}
+.gw-post-head{position:relative;z-index:3}
+.gw-post-more-wrap{position:relative;z-index:8;flex:none}
+.gw-post-more{width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--gw-muted);cursor:pointer}
+.gw-post-more:hover,.gw-post-more[aria-expanded="true"]{background:var(--gw-soft);color:var(--gw-text)}
+.gw-post-menu{position:absolute;top:calc(100% + 7px);right:0;z-index:80;width:232px;max-width:min(280px,calc(100vw - 44px));max-height:min(68vh,420px);overflow-y:auto;padding:7px;border:1px solid var(--gw-line);border-radius:15px;background:var(--gw-surface);color:var(--gw-text);box-shadow:0 18px 48px rgba(20,10,15,.22);pointer-events:auto}
+.gw-post-menu button{width:100%;min-height:43px;display:flex;align-items:center;gap:11px;padding:10px 11px;border:0;border-radius:9px;background:transparent;color:var(--gw-text);text-align:left;font-size:13px;font-weight:650;cursor:pointer;pointer-events:auto}
+.gw-post-menu button:hover,.gw-post-menu button:focus-visible{outline:0;background:var(--gw-soft)}
+.gw-post-menu button svg{flex:none;color:var(--gw-muted)}
+.gw-post-menu button.danger{color:#c83d53}
+.gw-post-menu button.danger svg{color:currentColor}
+.gw-post-card-open-link{z-index:1}
+.gw-post-card>*:not(.gw-post-card-open-link){z-index:2}
+.gw-post-more-wrap,.gw-post-menu{pointer-events:auto}
+html[data-theme="light"] body{background:#fff;color:#21191d}
+html[data-theme="dark"] body{background:#171116;color:#f7edf0}
+@media(max-width:650px){
+ .gw-post-more{width:42px;height:42px}
+ .gw-post-menu{position:fixed;top:auto;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));width:min(300px,calc(100vw - 24px));max-width:none;max-height:min(62vh,460px);border-radius:18px;padding:9px;box-shadow:0 22px 64px rgba(0,0,0,.28)}
+ .gw-post-menu button{min-height:48px;font-size:14px;padding:12px}
+}
