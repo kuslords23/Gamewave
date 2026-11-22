@@ -187,8 +187,8 @@ export default function MemberProfilePage() {
         setLiveStreams((liveRows.data || []) as typeof liveStreams);
       } else {
         const [channelRows, groupRows, liveRows] = await Promise.all([
-          supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id,space_type').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
-          supabase.from('scn_post_groups').select('id,name,description,privacy,owner_id').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
+          supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
+          supabase.from('scn_post_groups').select('id,name,description,privacy,owner_id,space_type').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
           supabase.from('user_live_streams').select('id,title,viewer_count,thumbnail_url,created_at').eq('user_id', profile.id).eq('status', 'live').in('privacy', ['public', 'followers']).order('created_at', { ascending: false }).limit(8),
         ]);
         setChannels((channelRows.data || []) as Space[]);
