@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, MessageCircle, Share2, Send, LoaderCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Heart, MessageCircle, Share2, Send, LoaderCircle } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { supabase } from '../lib/supabase';
 import FeedPostText from './feed/FeedPostText';
