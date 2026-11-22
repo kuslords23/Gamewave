@@ -18,7 +18,7 @@ type Person = { id: string; name: string; username: string; avatar: string };
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string | null; message: string | null; created_at: string };
 type Notice = { id: string; title: string; body: string | null; category: string | null; read: boolean; created_at: string; metadata?: Record<string, unknown> };
 type RoyalTurn = { role: 'user' | 'assistant'; content: string };
-type Community = { id: string; name: string; description: string; privacy: 'public' | 'private'; invite_code: string; conversation_id: string; created_at: string };
+type Community = { id: string; name: string; description: string; privacy: 'public' | 'private'; invite_code: string; conversation_id: string; created_at: string; space_type?: 'group' | 'community' };
 
 const tabs: { id: FeatureTab; label: string; icon: typeof Users }[] = [
   { id: 'friends', label: 'Friends', icon: Users },
@@ -75,6 +75,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [communityMembers, setCommunityMembers] = useState<Set<string>>(new Set());
   const [communitySearch, setCommunitySearch] = useState('');
   const [communityName, setCommunityName] = useState('');
+  const [communityKind, setCommunityKind] = useState<'community' | 'group'>('community');
   const [communityDescription, setCommunityDescription] = useState('');
   const [communityPrivacy, setCommunityPrivacy] = useState<'public' | 'private'>('public');
   const [communityGroupId, setCommunityGroupId] = useState('');
@@ -143,7 +144,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const loadCommunities = useCallback(async () => {
     if (!supabase) return;
     const [g, m] = await Promise.all([
-      supabase.from('scn_post_groups').select('id,name,description,privacy,invite_code,conversation_id,created_at').order('created_at', { ascending: false }).limit(80),
+      supabase.from('scn_post_groups').select('id,name,description,privacy,invite_code,conversation_id,created_at,space_type').order('created_at', { ascending: false }).limit(80),
       supabase.from('scn_post_group_members').select('group_id').eq('user_id', user.id),
     ]);
     if (g.error) { toast.error('Communities are unavailable. Apply migration 054 first.'); return; }
@@ -164,16 +165,16 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     setCommunityBusy(true);
     const name = communityName.trim();
     const description = communityDescription.trim();
-    const { data, error } = await supabase.rpc('create_scn_post_group', { p_name: name, p_description: description, p_privacy: communityPrivacy });
+    const { data, error } = await supabase.rpc(communityKind === 'community' ? 'create_scn_post_community' : 'create_scn_post_group', { p_name: name, p_description: description, p_privacy: communityPrivacy });
     if (error) toast.error(error.message);
     else {
       const row = Array.isArray(data) ? data[0] : data;
       await loadCommunities();
       setCommunityName(''); setCommunityDescription('');
       if (row?.id) {
-        const group = { id: String(row.id), name, description, privacy: communityPrivacy, invite_code: String(row.invite_code || ''), conversation_id: String(row.conversation_id || ''), created_at: new Date().toISOString() } as Community;
+        const group = { id: String(row.id), name, description, privacy: communityPrivacy, invite_code: String(row.invite_code || ''), conversation_id: String(row.conversation_id || ''), created_at: new Date().toISOString(), space_type: communityKind } as Community;
         setSelectedCommunity(group); setCommunityMembers(old => new Set(old).add(group.id));
-        toast.success('Community created');
+        toast.success((communityKind === 'community' ? 'Community' : 'Group') + ' created');
       }
     }
     setCommunityBusy(false);
@@ -528,12 +529,12 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
       <div className="scnf-panel-head"><div><span className="scnf-kicker">COMMUNITY SPACES</span><h2>Communities</h2><p>Build or join shared spaces using SCN group membership and conversations.</p></div></div>
       <div className="scnf-community-layout">
         <div className="scnf-community-discovery">
-          <form className="scnf-community-create" onSubmit={createCommunity}><b>Create a community</b><input value={communityName} onChange={e => setCommunityName(e.target.value)} placeholder="Community name" maxLength={64} required/><textarea value={communityDescription} onChange={e => setCommunityDescription(e.target.value)} placeholder="What is this community about?" rows={2}/><div><select value={communityPrivacy} onChange={e => setCommunityPrivacy(e.target.value as 'public'|'private')}><option value="public">Public</option><option value="private">Private · invite code</option></select><button className="scnf-gold-button" disabled={communityBusy || !communityName.trim()}><Plus size={15}/> Create</button></div></form>
+          <form className="scnf-community-create" onSubmit={createCommunity}><b>Create a {communityKind}</b><select value={communityKind} onChange={e => setCommunityKind(e.target.value as 'community' | 'group')}><option value="community">Community</option><option value="group">Group</option></select><input value={communityName} onChange={e => setCommunityName(e.target.value)} placeholder={communityKind === 'community' ? 'Community name' : 'Group name'} maxLength={64} required/><textarea value={communityDescription} onChange={e => setCommunityDescription(e.target.value)} placeholder={communityKind === 'community' ? 'What is this community about?' : 'What is this group for?'} rows={2}/><div><select value={communityPrivacy} onChange={e => setCommunityPrivacy(e.target.value as 'public'|'private')}><option value="public">Public</option><option value="private">Private · invite code</option></select><button className="scnf-gold-button" disabled={communityBusy || !communityName.trim()}><Plus size={15}/> Create</button></div></form>
           <div className="scnf-community-title"><b>Discover spaces</b><span>{communities.length} found</span></div><div className="scnf-search"><Search size={16}/><input value={communitySearch} onChange={e => setCommunitySearch(e.target.value)} placeholder="Search communities"/></div>
-          <div className="scnf-community-list">{communities.filter(group => (group.name + ' ' + group.description).toLowerCase().includes(communitySearch.toLowerCase())).map(group => <article key={group.id} className={selectedCommunity?.id === group.id ? 'selected' : ''}><div><b>{group.name}</b><small>{group.description || 'A community in SCN Post'} · {group.privacy}</small></div>{communityMembers.has(group.id) ? <button onClick={() => { setSelectedCommunity(group); void loadCommunityMessages(group); }}>Open</button> : <button onClick={() => void joinCommunity(group)} disabled={communityBusy}>Join</button>}</article>)}</div>
+          <div className="scnf-community-list">{communities.filter(group => (group.name + ' ' + group.description).toLowerCase().includes(communitySearch.toLowerCase())).map(group => <article key={group.id} className={selectedCommunity?.id === group.id ? 'selected' : ''}><div><b>{group.name}</b><small>{group.description || (group.space_type === 'group' ? 'A group in SCN Post' : 'A community in SCN Post')} · {group.space_type === 'group' ? 'Group' : 'Community'} · {group.privacy}</small></div>{communityMembers.has(group.id) ? <button onClick={() => { setSelectedCommunity(group); void loadCommunityMessages(group); }}>Open</button> : <button onClick={() => void joinCommunity(group)} disabled={communityBusy}>Join</button>}</article>)}</div>
           <div className="scnf-community-invite"><b>Join with an invite</b><input value={communityGroupId} onChange={e => setCommunityGroupId(e.target.value)} placeholder="Community ID"/><input value={communityInviteCode} onChange={e => setCommunityInviteCode(e.target.value)} placeholder="Invite code"/><button onClick={() => void joinCommunityByInvite()} disabled={communityBusy || !communityGroupId.trim() || !communityInviteCode.trim()}>Join private community</button></div>
         </div>
-        <div className="scnf-community-chat">{selectedCommunity ? <><header><div><b>{selectedCommunity.name}</b><small>{selectedCommunity.privacy} community</small></div>{communityMembers.has(selectedCommunity.id) && <button onClick={() => void shareCommunityInvite(selectedCommunity)}>Invite</button>}</header>{communityMembers.has(selectedCommunity.id) ? <><div className="scnf-community-messages">{communityMessages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'mine' : ''}><p>{message.content || message.message}</p><small>{message.sender_id === user.id ? 'You' : 'Member'} · {ago(message.created_at)}</small></div>)}{communityMessages.length === 0 && <div className="scnf-empty">Start the community conversation.</div>}</div><form className="scnf-chat-compose" onSubmit={sendCommunityMessage}><input value={communityMessageDraft} onChange={e => setCommunityMessageDraft(e.target.value)} placeholder="Message the community…"/><button disabled={!communityMessageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><Users size={28}/><b>Join this community</b><p>Join to read and contribute to its conversation.</p><button className="scnf-gold-button" onClick={() => void joinCommunity(selectedCommunity)}>Join community</button></div>}</> : <div className="scnf-empty"><Users size={30}/><b>Your community space</b><p>Select a community or create one to start a shared conversation.</p></div>}</div>
+        <div className="scnf-community-chat">{selectedCommunity ? <><header><div><b>{selectedCommunity.name}</b><small>{selectedCommunity.privacy} {selectedCommunity.space_type === 'group' ? 'group' : 'community'}</small></div>{communityMembers.has(selectedCommunity.id) && <button onClick={() => void shareCommunityInvite(selectedCommunity)}>Invite</button>}</header>{communityMembers.has(selectedCommunity.id) ? <><div className="scnf-community-messages">{communityMessages.map(message => <div key={message.id} className={message.sender_id === user.id ? 'mine' : ''}><p>{message.content || message.message}</p><small>{message.sender_id === user.id ? 'You' : 'Member'} · {ago(message.created_at)}</small></div>)}{communityMessages.length === 0 && <div className="scnf-empty">Start the community conversation.</div>}</div><form className="scnf-chat-compose" onSubmit={sendCommunityMessage}><input value={communityMessageDraft} onChange={e => setCommunityMessageDraft(e.target.value)} placeholder="Message the community…"/><button disabled={!communityMessageDraft.trim()}><Send size={17}/></button></form></> : <div className="scnf-empty"><Users size={28}/><b>Join this community</b><p>Join to read and contribute to its conversation.</p><button className="scnf-gold-button" onClick={() => void joinCommunity(selectedCommunity)}>Join community</button></div>}</> : <div className="scnf-empty"><Users size={30}/><b>Your community space</b><p>Select a community or create one to start a shared conversation.</p></div>}</div>
       </div>
     </section>;
 
