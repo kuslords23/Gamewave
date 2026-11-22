@@ -2,6 +2,7 @@
 import React,{FormEvent,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import QuotedPostPreview from './QuotedPostPreview';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {AnimatePresence,motion} from 'framer-motion';
 import {ArrowUpRight,BarChart3,Bell,Bookmark,Clapperboard,Compass,Film,Heart,Home,ImagePlus,Inbox,LogOut,MessageCircle,MoreHorizontal,Music2,Newspaper,Plus,Repeat,Search,Send,Share2,Sparkles,Sun,Moon,Users,UserRound,X,Settings} from 'lucide-react';
 import {Toaster,toast} from 'sonner';
@@ -20,6 +21,7 @@ const ago=(s:string)=>{const n=Math.max(0,Math.floor((Date.now()-new Date(s).get
 function Avatar({name,src,size='md'}:{name:string;src?:string|null;size?:'sm'|'md'}){return <span className={'avatar avatar-'+size}>{src&&(src.startsWith('http')||src.startsWith('/'))?<img src={src} alt=""/>:src||name.slice(0,1).toUpperCase()}</span>;}
 function commentTree(items:ScnComment[]){const map=new Map<string,ScnComment&{replies:ScnComment[]}>();const roots:(ScnComment&{replies:ScnComment[]})[]=[];items.forEach(c=>map.set(c.id,{...c,replies:[]}));map.forEach(c=>{if(c.parent_id&&map.has(c.parent_id))map.get(c.parent_id)!.replies.push(c);else roots.push(c);});return roots;}
 export default function ScnPostApp(){
+ const router=useRouter();
  const [session,setSession]=useState<Session|null>(null),[profile,setProfile]=useState<Profile|null>(null),[ready,setReady]=useState(false);
  const [mode,setMode]=useState<'signin'|'signup'>('signin'),[authName,setAuthName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[authBusy,setAuthBusy]=useState(false);
  const [posts,setPosts]=useState<ScnPost[]>([]),[tab,setTab]=useState<Tab>('home'),[query,setQuery]=useState('');
@@ -87,7 +89,7 @@ export default function ScnPostApp(){
     <div className="gw-post-list">
      {tab==='explore'&&discovery.slice(0,8).map(item=><article className="gw-article-card" key={item.id}><div className="gw-article-meta"><span>{item.kind==='blog'?'BLOG':'NEWS'}</span><b>{item.source}</b>{item.publishedAt&&<time>{ago(item.publishedAt)}</time>}</div><a href={item.url} target="_blank" rel="noreferrer"><h2>{item.title}</h2><p>{item.summary}</p><span className="gw-read-link">Read original article <ArrowUpRight size={15}/></span></a></article>)}
      {visible.map((p,i)=>{const kind=p.post_type==='video'||p.media_mime?.startsWith('video/')?'video':p.post_type==='audio'||p.media_mime?.startsWith('audio/')?'audio':p.media_url?'image':'none';return <React.Fragment key={p.id}>{i===3&&tab!=='following'&&discovery.slice(0,4).map(item=><article className="gw-article-card" key={item.id}><div className="gw-article-meta"><span>{item.kind==='blog'?'BLOG':'NEWS'}</span><b>{item.source}</b>{item.publishedAt&&<time>{ago(item.publishedAt)}</time>}</div><a href={item.url} target="_blank" rel="noreferrer"><h2>{item.title}</h2><p>{item.summary}</p><span className="gw-read-link">Read original article <ArrowUpRight size={15}/></span></a></article>)}
-      <article className="gw-post-card"><header className="gw-post-head"><Avatar name={p.user_name} src={p.user_avatar}/><div className="gw-post-author"><Link href={'/member/'+p.user_id}><b>{p.user_name}</b></Link><small>{ago(p.created_at)} · {p.quoted_post_id?'quote repost':p.post_type.replace('_',' ')}</small></div><button className="icon-btn" aria-label="More options"><MoreHorizontal/></button></header>
+      <article className="gw-post-card" role="link" tabIndex={0} aria-label={`Open post by ${p.user_name}`} onClick={event=>{if((event.target as HTMLElement).closest('a,button,input,textarea,select,video,audio,[contenteditable="true"]'))return;router.push('/post/'+p.id);}} onKeyDown={event=>{if(event.key!=='Enter'&&event.key!==' ')return;if((event.target as HTMLElement).closest('a,button,input,textarea,select,video,audio,[contenteditable="true"]'))return;event.preventDefault();router.push('/post/'+p.id);}}><header className="gw-post-head"><Link href={'/member/'+p.user_id} className="gw-post-avatar-link" aria-label={`View ${p.user_name} profile`}><Avatar name={p.user_name} src={p.user_avatar}/></Link><div className="gw-post-author"><Link href={'/member/'+p.user_id}><b>{p.user_name}</b></Link><small>{ago(p.created_at)} · {p.quoted_post_id?'quote repost':p.post_type.replace('_',' ')}</small></div><button className="icon-btn" aria-label="More options"><MoreHorizontal/></button></header>
        {p.title&&<h3 className="post-title">{p.title}</h3>}{p.content&&<FeedPostText text={p.content}/>}{p.quoted_post_id&&<QuotedPostPreview postId={p.quoted_post_id}/> }
        {kind==='image'&&p.media_url&&<img className="gw-post-media" src={p.media_url} alt={p.content||'Post image'} loading="lazy"/>}
        {kind==='video'&&p.media_url&&<video className="gw-post-media gw-feed-video" src={p.media_url} poster={p.cover_url||undefined} controls playsInline preload="metadata"/>}
