@@ -167,7 +167,7 @@ export default function MemberProfilePage() {
         const [channelMemberships, groupMemberships, liveRows] = await Promise.all([
           supabase.from('scn_post_channel_members').select('channel_id').eq('user_id', profile.id),
           supabase.from('scn_post_group_members').select('group_id').eq('user_id', profile.id),
-          supabase.from('user_live_streams').select('id,title,viewer_count,thumbnail_url,created_at').eq('user_id', profile.id).eq('status', 'live').eq('privacy', 'public').order('created_at', { ascending: false }).limit(8),
+          supabase.from('user_live_streams').select('id,title,viewer_count,thumbnail_url,created_at').eq('user_id', profile.id).eq('status', 'live').in('privacy', ['public', 'followers']).order('created_at', { ascending: false }).limit(8),
         ]);
         const channelIds = (channelMemberships.data || []).map(row => String(row.channel_id));
         const groupIds = (groupMemberships.data || []).map(row => String(row.group_id));
@@ -184,7 +184,7 @@ export default function MemberProfilePage() {
         const [channelRows, groupRows, liveRows] = await Promise.all([
           supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
           supabase.from('scn_post_groups').select('id,name,description,privacy,owner_id').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
-          supabase.from('user_live_streams').select('id,title,viewer_count,thumbnail_url,created_at').eq('user_id', profile.id).eq('status', 'live').eq('privacy', 'public').order('created_at', { ascending: false }).limit(8),
+          supabase.from('user_live_streams').select('id,title,viewer_count,thumbnail_url,created_at').eq('user_id', profile.id).eq('status', 'live').in('privacy', ['public', 'followers']).order('created_at', { ascending: false }).limit(8),
         ]);
         setChannels((channelRows.data || []) as Space[]);
         setGroups((groupRows.data || []) as Space[]);
