@@ -338,7 +338,7 @@ export default function MemberProfilePage() {
               <div className="member-actions">
                 {isOwn ? <button className="member-primary" onClick={() => setEditing(value => !value)}><Pencil size={15}/>{editing ? 'Close editor' : 'Edit profile'}</button>
                   : <><button className="member-primary" onClick={() => void toggleFollow()} disabled={busy}>{following ? <UserCheck size={15}/> : <UserPlus size={15}/>} {following ? 'Following' : 'Follow'}</button>
-                    {viewer && <><a className="member-secondary" href={SCN_BASE_URL + '/call/' + member.id + '?type=audio'}><Phone size={15}/> Audio call</a><a className="member-secondary" href={SCN_BASE_URL + '/call/' + member.id + '?type=video'}><Video size={15}/> Video call</a></>}
+                    {viewer && <><a className="member-secondary" href={SCN_BASE_URL + '/call/' + member.id + '?type=audio'} target="_blank" rel="noreferrer"><Phone size={15}/> Audio call</a><a className="member-secondary" href={SCN_BASE_URL + '/call/' + member.id + '?type=video'} target="_blank" rel="noreferrer"><Video size={15}/> Video call</a></>}
                   </>}
               </div>
             </div>
@@ -348,7 +348,7 @@ export default function MemberProfilePage() {
               {details.publicEmail && <a href={'mailto:' + details.publicEmail}><Mail size={14}/> Email</a>}
               {details.location && <span><MapPin size={14}/>{details.location}</span>}
             </div>
-            {isOwn && <div className="member-owner-shortcuts"><a href={SCN_BASE_URL + '/live'}><Radio size={15}/> Go live with SCN</a><span>SCN provides live audio/video sessions and calls.</span></div>}
+            {isOwn && <div className="member-owner-shortcuts"><a href={SCN_BASE_URL + '/live'} target="_blank" rel="noreferrer"><Radio size={15}/> Go live with SCN</a><span>SCN provides live audio/video sessions and calls.</span></div>}
           </section>
 
           {editing && isOwn && <section className="member-editor">
@@ -384,8 +384,8 @@ export default function MemberProfilePage() {
             {groups.length ? <div className="member-space-grid">{groups.map(space => <article key={space.id}><Users size={18}/><div><b>{space.name}</b><p>{space.description || 'A community space'}</p><small>{space.privacy === 'private' ? 'Private' : 'Public'}</small></div></article>)}</div> : <div className="member-state">No communities or groups to show yet.</div>}
             {isOwn && <Link className="member-manage-spaces" href="/">Open the community manager <ChevronRight size={15}/></Link>}
           </section>}
-          {tab === 'live' && <section><div className="member-post-heading"><div><span>SCN LIVE</span><h2>{isOwn ? 'Your live sessions' : 'Live now'}</h2></div>{isOwn && <a className="member-primary" href={SCN_BASE_URL + '/live'}><Radio size={15}/> Go live</a>}</div>
-            {liveStreams.length === 0 ? <div className="member-state">No public live session is running right now.</div> : <div className="member-live-grid">{liveStreams.map(stream => <a href={SCN_BASE_URL + '/live/' + stream.id} key={stream.id} className="member-live-card">{stream.thumbnail_url ? <img src={stream.thumbnail_url} alt="Live cover"/> : <div className="member-live-placeholder"><Radio size={28}/></div>}<span className="member-live-pill">LIVE</span><div><b>{stream.title}</b><small>{stream.viewer_count || 0} watching</small></div></a>)}</div>}
+          {tab === 'live' && <section><div className="member-post-heading"><div><span>SCN LIVE</span><h2>{isOwn ? 'Your live sessions' : 'Live now'}</h2></div>{isOwn && <a className="member-primary" href={SCN_BASE_URL + '/live'} target="_blank" rel="noreferrer"><Radio size={15}/> Go live</a>}</div>
+            {liveStreams.length === 0 ? <div className="member-state">No public live session is running right now.</div> : <div className="member-live-grid">{liveStreams.map(stream => <a href={SCN_BASE_URL + '/live/' + stream.id} key={stream.id} className="member-live-card" target="_blank" rel="noreferrer">{stream.thumbnail_url ? <img src={stream.thumbnail_url} alt="Live cover"/> : <div className="member-live-placeholder"><Radio size={28}/></div>}<span className="member-live-pill">LIVE</span><div><b>{stream.title}</b><small>{stream.viewer_count || 0} watching</small></div></a>)}</div>}
           </section>}
         </>}
     </section>
