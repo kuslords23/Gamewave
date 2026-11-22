@@ -246,9 +246,13 @@ export default function MemberProfilePage() {
     if (!supabase || !member || viewer !== member.id) return;
     setSaving(true);
     try {
+      const cleanName = profileName.trim();
+      const cleanUsername = profileUsername.trim().replace(/^@/, '');
+      if (!cleanName) throw new Error('Display name is required.');
+      if (!cleanUsername) throw new Error('Username is required.');
       const profileUpdate = await supabase.from('profiles').update({
-        name: profileName.trim(),
-        username: profileUsername.trim().replace(/^@/, '') || null,
+        name: cleanName,
+        username: cleanUsername,
         bio: profileBio.trim(),
       }).eq('id', member.id);
       if (profileUpdate.error) throw profileUpdate.error;
