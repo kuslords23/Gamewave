@@ -97,12 +97,13 @@ export default function MemberProfilePage() {
   const load = useCallback(async () => {
     if (!supabase || !key) { setLoading(false); return; }
     setLoading(true);
+    const lookupKey = member?.id || key;
     try {
       const sessionResult = await supabase.auth.getSession();
       const current = sessionResult.data.session?.user.id || null;
       setViewer(current);
-      const byId = await supabase.from('scn_post_public_profiles').select('id,name,username,avatar,bio').eq('id', key).maybeSingle();
-      const result = byId.data ? byId : await supabase.from('scn_post_public_profiles').select('id,name,username,avatar,bio').eq('username', key).maybeSingle();
+      const byId = await supabase.from('scn_post_public_profiles').select('id,name,username,avatar,bio').eq('id', lookupKey).maybeSingle();
+      const result = byId.data ? byId : await supabase.from('scn_post_public_profiles').select('id,name,username,avatar,bio').eq('username', lookupKey).maybeSingle();
       if (result.error || !result.data) { setMember(null); setPosts([]); setLoading(false); return; }
       const profile = result.data as Member;
       setMember(profile);
@@ -197,7 +198,7 @@ export default function MemberProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [key]);
+  }, [key, member?.id]);
 
   useEffect(() => { void load(); }, [load]);
 
