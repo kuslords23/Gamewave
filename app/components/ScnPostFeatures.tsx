@@ -59,7 +59,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
   const [profileBusy, setProfileBusy] = useState(false);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [reposted, setReposted] = useState<Set<string>>(new Set());
-  const [viewedReels, setViewedReels] = useState<Set<string>>(new Set());
+  const viewedReelsRef = useRef<Set<string>>(new Set());
   const [reelIndex, setReelIndex] = useState(0);
   const [reelMode, setReelMode] = useState<'for-you' | 'following' | 'latest'>('for-you');
   const reelFeedRef = useRef<HTMLDivElement | null>(null);
@@ -342,7 +342,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
     else toast.success(wasReposted ? 'Repost removed' : 'Added to your reposts');
   };
 
-  const recordReelView = async (post: ScnPost) => { if (!supabase || viewedReels.has(post.id)) return; setViewedReels(old => new Set(old).add(post.id)); const { error } = await supabase.rpc('bump_feed_post_view_count', { p_id: post.id }); if (error) console.warn('Reel view count was not recorded:', error.message); };
+  const recordReelView = async (post: ScnPost) => { if (!supabase || viewedReelsRef.current.has(post.id)) return; viewedReelsRef.current.add(post.id); const { error } = await supabase.rpc('bump_feed_post_view_count', { p_id: post.id }); if (error) { viewedReelsRef.current.delete(post.id); console.warn('Reel view count was not recorded:', error.message); } };
 
   useEffect(() => {
     if (activeTab !== 'reels' || !reelFeedRef.current) return;
@@ -521,7 +521,7 @@ export default function ScnPostFeatures({ activeTab, onTabChange, onClose, user,
           </div>
         </article>)}
       </div>}
-      <p className="scnf-reel-footnote">For You ranks eligible video posts using recency and visible engagement signals. Following only shows creators you follow. Playback pauses when a Reel leaves the viewing area.</p>
+      <p className="scnf-reel-footnote">For You ranks available video posts using recency and visible engagement signals. Following only shows creators you follow. Playback pauses when a Reel leaves the viewing area.</p>
     </section>;
 
     if (activeTab === 'communities') return <section className="scnf-panel">
