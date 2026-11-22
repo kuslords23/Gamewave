@@ -143,3 +143,19 @@ body:has(.gw-app){height:100%;overflow:hidden}
 @media(max-width:650px){
   .gw-header{padding:calc(7px + env(safe-area-inset-top)) 10px 7px;}
 }
+
+
+/* Gamewave feed card navigation and reliable light/dark text contrast */
+.gw-post-card{position:relative;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.gw-post-card:hover{border-color:color-mix(in srgb,var(--gw-wine) 28%,var(--gw-line));box-shadow:0 8px 26px rgba(32,16,22,.075)}
+.gw-post-card:focus-visible{outline:3px solid color-mix(in srgb,var(--gw-wine) 65%,transparent);outline-offset:3px}
+.gw-post-avatar-link{display:inline-flex;flex:none;border-radius:50%;text-decoration:none}
+.gw-post-avatar-link:focus-visible{outline:2px solid var(--gw-wine-2);outline-offset:3px}
+.gw-post-card .post-copy{color:var(--gw-text);line-height:1.7}
+.gw-post-card .mention{color:var(--gw-wine-2);font-weight:700}
+.gw-post-card .hashtag,.gw-post-card .tag-row span{color:var(--gw-wine-2)}
+.gw-app.theme-dark .gw-post-card .mention{color:#d9b8ff}
+.gw-app.theme-dark .gw-post-card .hashtag,.gw-app.theme-dark .gw-post-card .tag-row span{color:#e7c982}
+.gw-app.theme-light .gw-post-card .post-actions button{color:var(--gw-muted)}
+.gw-app.theme-light .gw-post-card .gw-post-stats{color:var(--gw-muted)}
+.gw-app.theme-dark .gw-post-card .post-copy{color:var(--gw-text)}
