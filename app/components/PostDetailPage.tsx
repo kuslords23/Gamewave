@@ -39,6 +39,7 @@ export default function PostDetailPage() {
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ScnComment | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<ScnPost[]>([]);
+  const [quotePosts, setQuotePosts] = useState<ScnPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -95,6 +96,14 @@ export default function PostDetailPage() {
       .then(({ data }) => { if (live) setRelatedPosts((data || []) as ScnPost[]); });
     return () => { live = false; };
   }, [post]);
+
+  useEffect(() => {
+    if (!supabase || !post?.id) { setQuotePosts([]); return; }
+    let live = true;
+    supabase.from('feed_posts').select(POST_COLUMNS).eq('quoted_post_id', post.id).order('created_at', { ascending: false }).limit(5)
+      .then(({ data }) => { if (live) setQuotePosts((data || []) as ScnPost[]); });
+    return () => { live = false; };
+  }, [post?.id]);
 
   useEffect(() => {
     if (!supabase || !postId) return;
@@ -169,6 +178,7 @@ export default function PostDetailPage() {
                 : <div className="post-comment-list">{buildCommentTree(comments).map(comment => renderComment(comment))}</div>}
             </section>
             {relatedPosts.length > 0 && <section className="post-related-discussions"><div><span>KEEP EXPLORING</span><h2>Related conversations</h2></div>{relatedPosts.map(item => <a key={item.id} href={'/post/' + item.id}><b>{item.user_name}</b><p>{item.title || item.content || 'Open this conversation'}</p><small>{item.comments_count} comments · {item.likes} likes</small></a>)}</section>}
+            {quotePosts.length > 0 && <section className="post-related-discussions"><div><span>POST CONTEXT</span><h2>Posts quoting this</h2></div>{quotePosts.map(item => <a key={item.id} href={'/post/' + item.id}><b>{item.user_name}</b><p>{item.content || 'Open this quote repost'}</p><small>{new Date(item.created_at).toLocaleDateString()} · {item.comments_count} comments</small></a>)}</section>}
           </>}
       </section>
       <aside className="post-detail-aside"><span>ONE POST. ONE PLACE.</span><h2>Good conversations deserve room.</h2><p>Share this page to bring people directly to the original post and its discussion.</p><button onClick={() => void sharePost()} disabled={!post}><Share2 size={16}/> Share this post</button></aside>
