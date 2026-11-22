@@ -313,8 +313,8 @@ export default function MemberProfilePage() {
     </article>)}</div>;
 
   const isOwn = Boolean(member && viewer === member.id);
-  const websiteLinks = (details.website || '').split(/[\\n,]+/).map(value => value.trim()).filter(Boolean);
-  const publicEmails = (details.publicEmail || '').split(/[\\n,]+/).map(value => value.trim()).filter(Boolean);
+  const websiteLinks = (details.website || '').split(/[\n,]+/).map(value => value.trim()).filter(Boolean);
+  const publicEmails = (details.publicEmail || '').split(/[\n,]+/).map(value => value.trim()).filter(Boolean);
   const visibleDetails = DETAIL_FIELDS.filter(field => Boolean(details[field.key]?.trim()));
   const tabs: { id: ProfileTab; label: string }[] = [
     { id: 'posts', label: 'Posts' }, { id: 'gallery', label: 'Gallery' }, { id: 'about', label: 'About' },
