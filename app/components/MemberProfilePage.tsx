@@ -27,8 +27,8 @@ const DEFAULT_DETAILS: ProfileDetails = {
   website: '', publicEmail: '', interests: '', skills: '', languages: '',
 };
 const DEFAULT_VISIBILITY: Record<string, Visibility> = {
-  cover: 'public', location: 'private', work: 'public', education: 'public',
-  business: 'public', relationshipStatus: 'private', website: 'public',
+  cover: 'public', location: 'private', work: 'private', education: 'private',
+  business: 'private', relationshipStatus: 'private', website: 'public',
   publicEmail: 'private', interests: 'public', skills: 'public', languages: 'public',
 };
 const DETAIL_FIELDS: { key: keyof ProfileDetails; label: string; icon: typeof BriefcaseBusiness; placeholder: string }[] = [
