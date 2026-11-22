@@ -65,8 +65,12 @@ export default function ChannelPage() {
         } else setPosts([]);
       }
       if (!member && currentChannel.privacy === 'public') {
-        const countResult = await supabase.rpc('get_scn_post_channel_member_count', { p_channel_id: channelId });
-        setMemberCount(Number(countResult.data || 0));
+        if (current) {
+          const countResult = await supabase.rpc('get_scn_post_channel_member_count', { p_channel_id: channelId });
+          setMemberCount(Number(countResult.data || 0));
+        } else {
+          setMemberCount(0);
+        }
       }
     } catch (error) {
       console.error('Channel load failed:', error);
@@ -114,7 +118,7 @@ export default function ChannelPage() {
       {loading ? <div className="scn-channel-state"><LoaderCircle className="scn-channel-spin"/> Loading channel…</div>
         : !channel ? <div className="scn-channel-state"><Radio size={30}/><b>Channel unavailable</b><p>This channel may be private, or the link may be invalid.</p>{viewer && <form onSubmit={e => { e.preventDefault(); void join(inviteCode); }}><input value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Private channel invite code"/><button disabled={!inviteCode.trim() || busy}>Join with code</button></form>}</div>
         : <>
-          <div className="scn-channel-hero"><span className="scn-channel-icon"><Radio size={26}/></span><div className="scn-channel-heading"><span>{channel.privacy === 'private' ? <><Lock size={12}/> PRIVATE CHANNEL</> : 'PUBLIC CHANNEL'}</span><h1>{channel.name}</h1><p>{channel.description || 'A channel on KUS Post.'}</p><small><Users size={13}/> {memberCount} members · {isOwner ? 'You own this channel' : isMember ? role : 'Open publishing space'}</small></div></div>
+          <div className="scn-channel-hero"><span className="scn-channel-icon"><Radio size={26}/></span><div className="scn-channel-heading"><span>{channel.privacy === 'private' ? <><Lock size={12}/> PRIVATE CHANNEL</> : 'PUBLIC CHANNEL'}</span><h1>{channel.name}</h1><p>{channel.description || 'A channel on KUS Post.'}</p><small><Users size={13}/> {memberCount > 0 ? memberCount + ' members · ' : ''}{isOwner ? 'You own this channel' : isMember ? role : 'Open publishing space'}</small></div></div>
           {isOwner && channel.privacy === 'private' && channel.invite_code && <div className="scn-channel-invite"><span>Private invite code: <b>{channel.invite_code}</b></span><button onClick={() => { void navigator.clipboard.writeText(channel.invite_code || '').then(() => toast.success('Invite code copied.')).catch(() => toast.error('Could not copy the invite code.')); }}>Copy code</button></div>}
           {!isMember ? <div className="scn-channel-join"><div><b>Join this channel</b><p>{channel.privacy === 'private' ? 'Enter the invitation code shared by the channel owner.' : 'Join to read the channel timeline and publish posts.'}</p></div>{channel.privacy === 'public' ? <button onClick={() => void join()} disabled={busy}>Join channel</button> : <form onSubmit={e => { e.preventDefault(); void join(inviteCode); }}><input value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Invite code"/><button disabled={busy || !inviteCode.trim()}>Join</button></form>}</div>
             : <>
