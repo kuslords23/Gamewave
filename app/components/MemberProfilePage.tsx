@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, LoaderCircle, UserPlus, UserCheck } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase';
 import QuotedPostPreview from './QuotedPostPreview';
 
 type Member = { id: string; name: string; username: string | null; avatar: string | null; bio: string | null };
