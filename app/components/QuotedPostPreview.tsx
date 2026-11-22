@@ -20,7 +20,7 @@ export default function QuotedPostPreview({ postId }: { postId: string }) {
   return <><div className="quoted-post-preview">
     {loading ? <span className="quoted-post-loading"><LoaderCircle size={14}/> Loading original post…</span>
       : post ? <Link href={'/post/' + post.id} className="quoted-post-link">
-        <span className="quoted-post-author">{post.user_avatar && (/^https?:|^\\//.test(post.user_avatar)) ? <img src={post.user_avatar} alt=""/> : post.user_avatar || '👑'} <b>{post.user_name}</b></span>
+        <span className="quoted-post-author">{post.user_avatar && (/^https?:|^\//.test(post.user_avatar)) ? <img src={post.user_avatar} alt=""/> : post.user_avatar || '👑'} <b>{post.user_name}</b></span>
         {post.title && <strong>{post.title}</strong>}
         {post.content && <span className="quoted-post-copy">{post.content}</span>}
         {post.media_url && (post.post_type === 'image' ? <img className="quoted-post-image" src={post.media_url} alt="Original post media"/> : post.post_type === 'video' && <img className="quoted-post-image" src={post.cover_url || post.media_url} alt="Original video preview"/>)}{post.media_url && post.post_type === 'audio' && <span className="quoted-post-media">♫ Audio post</span>}
