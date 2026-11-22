@@ -147,6 +147,9 @@ body:has(.gw-app){height:100%;overflow:hidden}
 
 /* Gamewave feed card navigation and reliable light/dark text contrast */
 .gw-post-card{position:relative;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.gw-post-card-open-link{position:absolute;inset:0;z-index:1;border-radius:inherit;cursor:pointer}
+.gw-post-card>*:not(.gw-post-card-open-link){position:relative;z-index:2;pointer-events:none}
+.gw-post-card a:not(.gw-post-card-open-link),.gw-post-card button,.gw-post-card video,.gw-post-card audio{pointer-events:auto}
 .gw-post-card:hover{border-color:color-mix(in srgb,var(--gw-wine) 28%,var(--gw-line));box-shadow:0 8px 26px rgba(32,16,22,.075)}
 .gw-post-card:focus-visible{outline:3px solid color-mix(in srgb,var(--gw-wine) 65%,transparent);outline-offset:3px}
 .gw-post-avatar-link{display:inline-flex;flex:none;border-radius:50%;text-decoration:none}
