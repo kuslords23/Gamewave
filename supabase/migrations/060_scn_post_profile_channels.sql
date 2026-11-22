@@ -223,8 +223,8 @@ begin
   end if;
   v_id := gen_random_uuid();
   v_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 10));
-  insert into public.scn_post_channels(owner_id, name, description, privacy, invite_code)
-  values (auth.uid(), trim(p_name), left(coalesce(trim(p_description), ''), 500), coalesce(p_privacy, 'public'), v_code);
+  insert into public.scn_post_channels(id, owner_id, name, description, privacy, invite_code)
+  values (v_id, auth.uid(), trim(p_name), left(coalesce(trim(p_description), ''), 500), coalesce(p_privacy, 'public'), v_code);
   insert into public.scn_post_channel_members(channel_id, user_id, role)
   values (v_id, auth.uid(), 'owner');
   return query select v_id, v_code;
