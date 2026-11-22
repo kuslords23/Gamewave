@@ -116,3 +116,22 @@
  .scnf-workspace-reels .scnf-reel-card-copy{left:14px;right:70px;bottom:calc(18px + env(safe-area-inset-bottom))}
  .scnf-workspace-reels .scnf-reel-card-actions{right:8px;bottom:calc(20px + env(safe-area-inset-bottom));gap:13px}
 }
+
+
+/* Keep feature panels readable when Gamewave is in light mode. Reels retain white video-overlay controls. */
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels){--scnf-text:var(--gw-text);--scnf-muted:var(--gw-muted);--scnf-line:var(--gw-line);--scnf-card:var(--gw-surface);--scnf-bg:var(--gw-bg);background:var(--gw-bg);color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-topbar{background:var(--gw-glass);border-color:var(--gw-line);color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-topbar nav button{color:var(--gw-muted)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-topbar nav button.active{color:var(--gw-wine);background:var(--gw-soft);border-color:var(--gw-line)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel{background:var(--gw-surface);border-color:var(--gw-line);color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel h2,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel h3,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel b{color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel p,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel small,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel label,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-muted{color:var(--gw-muted)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel input,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel textarea,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel select{background:var(--gw-soft);border-color:var(--gw-line);color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel input::placeholder,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-panel textarea::placeholder{color:var(--gw-muted)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-person,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-notice,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-own-posts article,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-metric-grid article,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-creator-list article,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-community-discovery,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-community-chat{background:var(--gw-soft);border-color:var(--gw-line);color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-profile-hero{background:var(--gw-soft);border-color:var(--gw-line)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-profile-form input,.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-profile-form textarea{color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-royal-turn{background:var(--gw-soft);border-color:var(--gw-line);color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-royal-turn p{color:var(--gw-text)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-royal-compose{background:var(--gw-soft);border-color:var(--gw-line)}
+.gw-app.theme-light .scnf-workspace:not(.scnf-workspace-reels) .scnf-royal-compose textarea{color:var(--gw-text)}
