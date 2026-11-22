@@ -50,12 +50,12 @@ export default function ChannelPage() {
       if (!member) {
         setPosts([]); setOwnPosts([]);
       } else {
-        const [postLinks, count, own] = await Promise.all([
+        const [postLinks, countResult, own] = await Promise.all([
           supabase.from('scn_post_channel_posts').select('post_id').eq('channel_id', channelId).order('created_at', { ascending: false }).limit(80),
-          supabase.from('scn_post_channel_members').select('user_id', { count: 'exact', head: true }).eq('channel_id', channelId),
+          supabase.rpc('get_scn_post_channel_member_count', { p_channel_id: channelId }),
           supabase.from('feed_posts').select('id,title,content,created_at').eq('user_id', current).order('created_at', { ascending: false }).limit(40),
         ]);
-        setMemberCount(count.count || 0);
+        setMemberCount(Number(countResult.data || 0));
         setOwnPosts((own.data || []) as OwnPost[]);
         const ids = (postLinks.data || []).map(row => String(row.post_id));
         if (ids.length) {
@@ -65,8 +65,8 @@ export default function ChannelPage() {
         } else setPosts([]);
       }
       if (!member && currentChannel.privacy === 'public') {
-        const count = await supabase.from('scn_post_channel_members').select('user_id', { count: 'exact', head: true }).eq('channel_id', channelId);
-        setMemberCount(count.count || 0);
+        const countResult = await supabase.rpc('get_scn_post_channel_member_count', { p_channel_id: channelId });
+        setMemberCount(Number(countResult.data || 0));
       }
     } catch (error) {
       console.error('Channel load failed:', error);
