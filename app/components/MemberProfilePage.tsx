@@ -17,7 +17,7 @@ type Member = { id: string; name: string; username: string | null; avatar: strin
 type MemberPost = { id: string; user_id: string; user_name: string; user_avatar: string | null; title: string | null; content: string | null; post_type: string; media_url: string | null; cover_url: string | null; link_url: string | null; link_platform: string | null; quoted_post_id: string | null; likes: number; comments_count: number; reposts: number; created_at: string };
 type Visibility = 'public' | 'followers' | 'private';
 type ProfileDetails = Record<string, string>;
-type Space = { id: string; name: string; description: string; privacy: string; owner_id: string };
+type Space = { id: string; name: string; description: string; privacy: string; owner_id: string; space_type?: 'group' | 'community' };
 type ProfileTab = 'posts' | 'gallery' | 'about' | 'activity' | 'spaces' | 'live';
 type ActivityTab = 'liked' | 'saved';
 
@@ -93,6 +93,10 @@ export default function MemberProfilePage() {
   const [channelDescription, setChannelDescription] = useState('');
   const [channelPrivacy, setChannelPrivacy] = useState<'public' | 'private'>('public');
   const [creatingChannel, setCreatingChannel] = useState(false);
+  const [communityName, setCommunityName] = useState('');
+  const [communityDescription, setCommunityDescription] = useState('');
+  const [communityPrivacy, setCommunityPrivacy] = useState<'public' | 'private'>('public');
+  const [creatingCommunity, setCreatingCommunity] = useState(false);
 
   const load = useCallback(async () => {
     if (!supabase || !key) { setLoading(false); return; }
@@ -174,7 +178,7 @@ export default function MemberProfilePage() {
         const groupIds = (groupMemberships.data || []).map(row => String(row.group_id));
         const [channelRows, groupRows, publicChannelRows] = await Promise.all([
           channelIds.length ? supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id').in('id', channelIds) : Promise.resolve({ data: [] as Space[] }),
-          groupIds.length ? supabase.from('scn_post_groups').select('id,name,description,privacy,owner_id').in('id', groupIds) : Promise.resolve({ data: [] as Space[] }),
+          groupIds.length ? supabase.from('scn_post_groups').select('id,name,description,privacy,owner_id,space_type').in('id', groupIds) : Promise.resolve({ data: [] as Space[] }),
           supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id').eq('privacy', 'public').order('created_at', { ascending: false }).limit(24),
         ]);
         setChannels((channelRows.data || []) as Space[]);
@@ -183,7 +187,7 @@ export default function MemberProfilePage() {
         setLiveStreams((liveRows.data || []) as typeof liveStreams);
       } else {
         const [channelRows, groupRows, liveRows] = await Promise.all([
-          supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
+          supabase.from('scn_post_channels').select('id,name,description,privacy,owner_id,space_type').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
           supabase.from('scn_post_groups').select('id,name,description,privacy,owner_id').eq('owner_id', profile.id).eq('privacy', 'public').limit(24),
           supabase.from('user_live_streams').select('id,title,viewer_count,thumbnail_url,created_at').eq('user_id', profile.id).eq('status', 'live').in('privacy', ['public', 'followers']).order('created_at', { ascending: false }).limit(8),
         ]);
@@ -291,6 +295,24 @@ export default function MemberProfilePage() {
     setCreatingChannel(false);
   };
 
+  const createCommunity = async () => {
+    if (!supabase || !viewer || communityName.trim().length < 2) return;
+    setCreatingCommunity(true);
+    const result = await supabase.rpc('create_scn_post_community', {
+      p_name: communityName.trim(),
+      p_description: communityDescription.trim(),
+      p_privacy: communityPrivacy,
+    });
+    if (result.error) toast.error(result.error.message);
+    else {
+      toast.success('Community created.');
+      setCommunityName('');
+      setCommunityDescription('');
+      await load();
+    }
+    setCreatingCommunity(false);
+  };
+
   const joinChannel = async (channel: Space) => {
     if (!supabase || !viewer) { toast.error('Sign in to join channels.'); return; }
     const invite = channel.privacy === 'private' ? window.prompt('Enter the channel invite code') : null;
@@ -381,9 +403,12 @@ export default function MemberProfilePage() {
             <h3 className="member-space-title"><Radio size={16}/> Channels</h3>
             <div className="member-space-grid">{channels.map(space => <Link href={'/channel/' + space.id} key={space.id} className="member-space-card"><Radio size={18}/><div><b>{space.name}</b><p>{space.description || 'A channel on KUS Post'}</p><small>{space.privacy === 'private' ? 'Private' : 'Public'} · {space.owner_id === member.id ? 'Owner' : 'Member'}</small></div><ChevronRight size={15}/></Link>)}</div>
             {isOwn && discoverChannels.filter(item => !channels.some(own => own.id === item.id)).length > 0 && <><h4 className="member-space-subtitle">Discover public channels</h4><div className="member-space-grid">{discoverChannels.filter(item => !channels.some(own => own.id === item.id)).map(space => <article key={space.id}><Radio size={18}/><div><b>{space.name}</b><p>{space.description || 'A public channel'}</p></div><button onClick={() => void joinChannel(space)}>Join</button></article>)}</div></>}
-            <h3 className="member-space-title"><Users size={16}/> Communities and groups</h3>
-            {groups.length ? <div className="member-space-grid">{groups.map(space => <article key={space.id}><Users size={18}/><div><b>{space.name}</b><p>{space.description || 'A community space'}</p><small>{space.privacy === 'private' ? 'Private' : 'Public'}</small></div></article>)}</div> : <div className="member-state">No communities or groups to show yet.</div>}
-            {isOwn && <Link className="member-manage-spaces" href="/">Open the community manager <ChevronRight size={15}/></Link>}
+            {isOwn && <div className="member-channel-create member-community-create"><h3><Users size={16}/> Create a community</h3><input value={communityName} onChange={e => setCommunityName(e.target.value)} placeholder="Community name"/><textarea value={communityDescription} onChange={e => setCommunityDescription(e.target.value)} placeholder="What brings this community together?" rows={2}/><div><select value={communityPrivacy} onChange={e => setCommunityPrivacy(e.target.value as 'public' | 'private')}><option value="public">Public community</option><option value="private">Private community</option></select><button className="member-primary" onClick={() => void createCommunity()} disabled={creatingCommunity || communityName.trim().length < 2}>{creatingCommunity ? 'Creating…' : 'Create community'}</button></div></div>}
+            <h3 className="member-space-title"><Users size={16}/> Communities</h3>
+            {groups.filter(space => space.space_type === 'community').length ? <div className="member-space-grid">{groups.filter(space => space.space_type === 'community').map(space => <article key={space.id}><Users size={18}/><div><b>{space.name}</b><p>{space.description || 'A community space'}</p><small>{space.privacy === 'private' ? 'Private' : 'Public'} · {space.owner_id === member.id ? 'Owner' : 'Member'}</small></div></article>)}</div> : <div className="member-state">No communities to show yet.</div>}
+            <h3 className="member-space-title"><Users size={16}/> Groups</h3>
+            {groups.filter(space => space.space_type !== 'community').length ? <div className="member-space-grid">{groups.filter(space => space.space_type !== 'community').map(space => <article key={space.id}><Users size={18}/><div><b>{space.name}</b><p>{space.description || 'A group space'}</p><small>{space.privacy === 'private' ? 'Private' : 'Public'} · {space.owner_id === member.id ? 'Owner' : 'Member'}</small></div></article>)}</div> : <div className="member-state">No groups to show yet.</div>}
+            {isOwn && <Link className="member-manage-spaces" href="/">Open the group manager <ChevronRight size={15}/></Link>}
           </section>}
           {tab === 'live' && <section><div className="member-post-heading"><div><span>SCN LIVE</span><h2>{isOwn ? 'Your live sessions' : 'Live now'}</h2></div>{isOwn && <a className="member-primary" href={SCN_BASE_URL + '/live'} target="_blank" rel="noreferrer"><Radio size={15}/> Go live</a>}</div>
             {liveStreams.length === 0 ? <div className="member-state">No public live session is running right now.</div> : <div className="member-live-grid">{liveStreams.map(stream => <a href={SCN_BASE_URL + '/live/' + stream.id} key={stream.id} className="member-live-card" target="_blank" rel="noreferrer">{stream.thumbnail_url ? <img src={stream.thumbnail_url} alt="Live cover"/> : <div className="member-live-placeholder"><Radio size={28}/></div>}<span className="member-live-pill">LIVE</span><div><b>{stream.title}</b><small>{stream.viewer_count || 0} watching</small></div></a>)}</div>}
