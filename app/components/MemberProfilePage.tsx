@@ -17,6 +17,7 @@ type Member = { id: string; name: string; username: string | null; avatar: strin
 type MemberPost = { id: string; user_id: string; user_name: string; user_avatar: string | null; title: string | null; content: string | null; post_type: string; media_url: string | null; cover_url: string | null; link_url: string | null; link_platform: string | null; quoted_post_id: string | null; likes: number; comments_count: number; reposts: number; created_at: string };
 type Visibility = 'public' | 'followers' | 'private';
 type ProfileDetails = Record<string, string>;
+type ProfileDetailRow = { details?: ProfileDetails; visibility?: Record<string, Visibility>; cover_url?: string | null };
 type Space = { id: string; name: string; description: string; privacy: string; owner_id: string; space_type?: 'group' | 'community' };
 type ProfileTab = 'posts' | 'gallery' | 'about' | 'activity' | 'spaces' | 'live';
 type ActivityTab = 'liked' | 'saved';
@@ -131,16 +132,16 @@ export default function MemberProfilePage() {
         setFollowing(!!edge.data);
       } else setFollowing(false);
 
-      let detailRow: { details?: ProfileDetails; visibility?: Record<string, Visibility>; cover_url?: string | null } | null = null;
+      let detailRow: ProfileDetailRow | null = null;
       if (current === profile.id) {
         const own = await supabase.from('scn_post_profile_details').select('details,visibility,cover_url').eq('user_id', profile.id).maybeSingle();
-        detailRow = own.data as typeof detailRow;
+        detailRow = own.data as ProfileDetailRow | null;
       } else if (current) {
         const followerView = await supabase.from('scn_post_followers_profile_details').select('details,cover_url').eq('user_id', profile.id).maybeSingle();
-        if (followerView.data) detailRow = followerView.data as typeof detailRow;
+        if (followerView.data) detailRow = followerView.data as ProfileDetailRow | null;
         else {
           const publicView = await supabase.from('scn_post_public_profile_details').select('details,cover_url').eq('user_id', profile.id).maybeSingle();
-          detailRow = publicView.data as typeof detailRow;
+          detailRow = publicView.data as ProfileDetailRow | null;
         }
       } else {
         const publicView = await supabase.from('scn_post_public_profile_details').select('details,cover_url').eq('user_id', profile.id).maybeSingle();
