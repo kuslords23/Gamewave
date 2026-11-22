@@ -12,7 +12,7 @@ type Member = { id: string; name: string; username: string | null; avatar: strin
 type MemberPost = { id: string; user_id: string; user_name: string; user_avatar: string | null; title: string | null; content: string | null; post_type: string; media_url: string | null; cover_url: string | null; link_url: string | null; link_platform: string | null; quoted_post_id: string | null; likes: number; comments_count: number; reposts: number; created_at: string };
 
 function Avatar({ name, src }: { name: string; src: string | null }) {
-  return <span className="member-avatar">{src && (/^https?:|^\\//.test(src)) ? <img src={src} alt="" /> : src || name.slice(0, 1).toUpperCase()}</span>;
+  return <span className="member-avatar">{src && (/^https?:|^\//.test(src)) ? <img src={src} alt="" /> : src || name.slice(0, 1).toUpperCase()}</span>;
 }
 
 export default function MemberProfilePage() {
